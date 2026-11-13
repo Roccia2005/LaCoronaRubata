@@ -3,6 +3,7 @@
 #include "PlayerPhysics.h"
 #include "ShapeGenerator.h"
 #include <glm/gtc/matrix_transform.hpp>
+#include <algorithm>
 #include <cmath>
 
 using namespace GameConfig;
@@ -24,10 +25,7 @@ Level::Level(Scene& scene) : m_scene(scene)
         DecorativeShapes::platformRock());
     const auto coinGeo = m_scene.addGeometry(
         DecorativeShapes::crystal(COIN_RADIUS));
-    const auto doorGeo = m_scene.addGeometry(
-        DecorativeShapes::door());
-
-    createDoor(doorGeo);
+    createDoor();
     createPlayer(m_players[0], -92.0f, DecorativeShapes::man());
     createPlayer(m_players[1], -78.0f, DecorativeShapes::women());
     createFloor(floorGeo);
@@ -45,10 +43,8 @@ void Level::createPlayer(Player& player, float spawnX, const MeshData& mesh)
     player.reset();
 }
 
-void Level::createDoor(std::size_t doorGeo)
+void Level::createDoor()
 {
-    const auto doorInstance = m_scene.addInstance(doorGeo);
-
     constexpr float width = 12.0f;
     constexpr float height = 16.0f;
     constexpr float x = 75.0f;
@@ -57,8 +53,47 @@ void Level::createDoor(std::size_t doorGeo)
     const glm::vec2 doorCenter{x, FLOOR_Y + doorSize.y * 0.5f};
     m_exitArea = makeAABB(doorCenter, doorSize);
 
-    m_scene.instance(doorInstance).modelMatrix =
-        makeModel(doorCenter, doorSize.x, doorSize.y);
+    const auto meshes = DecorativeShapes::door();
+    const auto recess = m_scene.addInstance(m_scene.addGeometry(meshes.recess));
+    const auto model = makeModel(doorCenter, doorSize.x, doorSize.y);
+    m_scene.instance(recess).modelMatrix = model;
+    for (std::size_t i = 0; i < m_doorLeaves.size(); ++i) {
+        m_doorLeaves[i] = m_scene.addInstance(m_scene.addGeometry(meshes.leaves[i]));
+    }
+    const auto frame = m_scene.addInstance(m_scene.addGeometry(meshes.frame));
+    m_scene.instance(frame).modelMatrix = model;
+    updateDoorLeaves();
+}
+
+bool Level::isAtDoor(const Player& player) const
+{
+    return PlayerPhysics::intersects(makeAABB(player.position, player.size), m_exitArea);
+}
+
+void Level::updateDoor(float dt)
+{
+    constexpr float openingDuration = 0.35f;
+    const bool shouldOpen = isAtDoor(m_players[0]) || isAtDoor(m_players[1]);
+    const float step = dt / openingDuration;
+    const float opening = std::clamp(m_doorOpening + (shouldOpen ? step : -step),
+                                     0.0f, 1.0f);
+    if (opening != m_doorOpening) {
+        m_doorOpening = opening;
+        updateDoorLeaves();
+    }
+}
+
+void Level::updateDoorLeaves()
+{
+    const glm::vec2 doorSize = m_exitArea.halfSize * 2.0f;
+    const float scaleX = 1.0f - 0.9f * m_doorOpening;
+    for (std::size_t i = 0; i < m_doorLeaves.size(); ++i) {
+        const float hingeX = DecorativeShapes::DoorMeshes::hingeX[i];
+        // Equivale a T(cardine) * S * T(-cardine) in coordinate locali.
+        const glm::vec2 offset{doorSize.x * hingeX * (1.0f - scaleX), 0.0f};
+        m_scene.instance(m_doorLeaves[i]).modelMatrix =
+            makeModel(m_exitArea.center + offset, doorSize.x * scaleX, doorSize.y);
+    }
 }
 
 void Level::createFloor(std::size_t floorGeo)
@@ -112,6 +147,7 @@ void Level::update(float dt, float halfWidth, const PlayerInput& input1, const P
                                  dt, halfWidth, m_obstacles);
 
     updateModelMatrices();
+    updateDoor(dt);
     collectCoins(currentTime);
 }
 
@@ -152,18 +188,13 @@ void Level::collectCoins(float currentTime)
 
 bool Level::isFinished() const
 {
-    for (const Player& player : m_players) {
-        const glm::vec2 offset = player.position - m_exitArea.center;
-        if (std::abs(offset.x) > m_exitArea.halfSize.x ||
-            std::abs(offset.y) > m_exitArea.halfSize.y) {
-            return false;
-        }
-    }
-    return true;
+    return m_doorOpening >= 1.0f && isAtDoor(m_players[0]) && isAtDoor(m_players[1]);
 }
 
 void Level::reset()
 {
+    m_doorOpening = 0.0f;
+    updateDoorLeaves();
     for (Player& player : m_players) {
         player.reset();
     }

@@ -121,13 +121,13 @@ MeshData grassStrip()
     return mesh;
 }
 
-MeshData door()
+DoorMeshes door()
 {
-    MeshData mesh;
+    DoorMeshes meshes;
     constexpr float bottom = -0.5f;
     constexpr float archBase = 0.17f;
     constexpr float pi = 3.14159265f;
-    constexpr int archStones = 9;
+    constexpr int archStones = 10;
     const glm::vec3 mortar{0.20f, 0.19f, 0.24f};
     const glm::vec3 stoneLight{0.55f, 0.51f, 0.53f};
     const glm::vec3 stoneDark{0.43f, 0.40f, 0.45f};
@@ -137,30 +137,13 @@ MeshData door()
     const glm::vec3 brass{0.93f, 0.70f, 0.31f};
 
     // Il fondo scuro affiora nelle fughe tra le pietre.
-    addRectangle(mesh, -0.50f, bottom, 0.50f, archBase, mortar);
+    addRectangle(meshes.recess, -0.50f, bottom, 0.50f, archBase, mortar);
     for (int i = 0; i < archStones; ++i) {
         const float start = pi * i / archStones;
         const float end = pi * (i + 1) / archStones;
-        addTriangle(mesh, {0.0f, archBase},
+        addTriangle(meshes.recess, {0.0f, archBase},
                     {0.50f * std::cos(start), archBase + 0.33f * std::sin(start)},
                     {0.50f * std::cos(end), archBase + 0.33f * std::sin(end)}, mortar);
-    }
-
-    // Ante in legno con giunti verticali e coronamento ad arco.
-    addRectangle(mesh, -0.38f, bottom, 0.38f, archBase, wood);
-    for (int i = 0; i < archStones; ++i) {
-        const float start = pi * i / archStones;
-        const float end = pi * (i + 1) / archStones;
-        addTriangle(mesh, {0.0f, archBase},
-                    {0.38f * std::cos(start), archBase + 0.24f * std::sin(start)},
-                    {0.38f * std::cos(end), archBase + 0.24f * std::sin(end)}, wood);
-    }
-    for (int i = -2; i <= 2; ++i) {
-        const float x = 0.123f * i;
-        const float halfSeam = i == 0 ? 0.012f : 0.005f;
-        const float ratio = (std::abs(x) + halfSeam) / 0.38f;
-        const float top = archBase + 0.24f * std::sqrt(1.0f - ratio * ratio) - 0.006f;
-        addRectangle(mesh, x - halfSeam, bottom, x + halfSeam, top, woodShade);
     }
 
     // Blocchi dei montanti e conci dell'arco.
@@ -168,8 +151,8 @@ MeshData door()
         const float y = bottom + (archBase - bottom) * i / 4;
         const float top = bottom + (archBase - bottom) * (i + 1) / 4 - 0.010f;
         const glm::vec3& stone = i % 2 == 0 ? stoneLight : stoneDark;
-        addRectangle(mesh, -0.50f, y, -0.38f, top, stone);
-        addRectangle(mesh, 0.38f, y, 0.50f, top, stone);
+        addRectangle(meshes.frame, -0.50f, y, -0.38f, top, stone);
+        addRectangle(meshes.frame, 0.38f, y, 0.50f, top, stone);
     }
     for (int i = 0; i < archStones; ++i) {
         const float start = pi * i / archStones + 0.012f;
@@ -179,23 +162,50 @@ MeshData door()
         const glm::vec2 outerStart{0.50f * std::cos(start), archBase + 0.33f * std::sin(start)};
         const glm::vec2 outerEnd{0.50f * std::cos(end), archBase + 0.33f * std::sin(end)};
         const glm::vec3& stone = i % 2 == 0 ? stoneLight : stoneDark;
-        addTriangle(mesh, innerStart, outerStart, outerEnd, stone);
-        addTriangle(mesh, innerStart, outerEnd, innerEnd, stone);
+        addTriangle(meshes.frame, innerStart, outerStart, outerEnd, stone);
+        addTriangle(meshes.frame, innerStart, outerEnd, innerEnd, stone);
     }
 
-    // Bandelle in ferro e maniglie in ottone.
-    for (float y : {-0.34f, 0.04f}) {
-        addRectangle(mesh, -0.37f, y, -0.09f, y + 0.045f, iron);
-        addRectangle(mesh, 0.09f, y, 0.37f, y + 0.045f, iron);
-        addRectangle(mesh, -0.32f, y + 0.013f, -0.30f, y + 0.032f, brass);
-        addRectangle(mesh, 0.30f, y + 0.013f, 0.32f, y + 0.032f, brass);
+    addRectangle(meshes.frame, -0.50f, bottom, 0.50f, -0.465f, stoneDark);
+
+    // Le ante condividono le coordinate locali della cornice.
+    for (int side = 0; side < 2; ++side) {
+        const bool left = side == 0;
+        MeshData& leaf = meshes.leaves[side];
+        const float hinge = meshes.hingeX[side];
+        const float minX = left ? hinge : 0.0f;
+        const float maxX = left ? 0.0f : hinge;
+        addRectangle(leaf, minX, bottom, maxX, archBase, wood);
+
+        const int firstSegment = left ? archStones / 2 : 0;
+        for (int i = firstSegment; i < firstSegment + archStones / 2; ++i) {
+            const float start = pi * i / archStones;
+            const float end = pi * (i + 1) / archStones;
+            addTriangle(leaf, {0.0f, archBase},
+                        {0.38f * std::cos(start), archBase + 0.24f * std::sin(start)},
+                        {0.38f * std::cos(end), archBase + 0.24f * std::sin(end)}, wood);
+        }
+        for (float distance : {0.123f, 0.246f}) {
+            const float x = left ? -distance : distance;
+            const float ratio = (distance + 0.005f) / 0.38f;
+            const float top = archBase + 0.24f * std::sqrt(1.0f - ratio * ratio) - 0.006f;
+            addRectangle(leaf, x - 0.005f, bottom, x + 0.005f, top, woodShade);
+        }
+        addRectangle(leaf, left ? -0.012f : 0.0f, bottom,
+                     left ? 0.0f : 0.012f, archBase + 0.233f, woodShade);
+
+        for (float y : {-0.34f, 0.04f}) {
+            addRectangle(leaf, left ? -0.37f : 0.09f, y,
+                         left ? -0.09f : 0.37f, y + 0.045f, iron);
+            addRectangle(leaf, left ? -0.32f : 0.30f, y + 0.013f,
+                         left ? -0.30f : 0.32f, y + 0.032f, brass);
+        }
+        addRectangle(leaf, left ? -0.105f : 0.035f, -0.19f,
+                     left ? -0.035f : 0.105f, -0.075f, iron);
+        addRectangle(leaf, left ? -0.092f : 0.048f, -0.146f,
+                     left ? -0.048f : 0.092f, -0.114f, brass);
     }
-    addRectangle(mesh, -0.105f, -0.19f, -0.035f, -0.075f, iron);
-    addRectangle(mesh, 0.035f, -0.19f, 0.105f, -0.075f, iron);
-    addRectangle(mesh, -0.092f, -0.146f, -0.048f, -0.114f, brass);
-    addRectangle(mesh, 0.048f, -0.146f, 0.092f, -0.114f, brass);
-    addRectangle(mesh, -0.50f, bottom, 0.50f, -0.465f, stoneDark);
-    return mesh;
+    return meshes;
 }
 
 } // namespace DecorativeShapes
