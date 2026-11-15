@@ -82,6 +82,9 @@
     <ClCompile Include="DecorativeShapes.cpp" />
     <ClCompile Include="Game.cpp" />
     <ClCompile Include="Level.cpp" />
+    <ClCompile Include="LevelCatalog.cpp" />
+    <ClCompile Include="LevelMaps.cpp" />
+    <ClCompile Include="LevelView.cpp" />
     <ClCompile Include="PlayerPhysics.cpp" />
     <ClCompile Include="Landscape.cpp" />
     <ClCompile Include="main.cpp" />
@@ -108,6 +111,11 @@
     <ClInclude Include="DecorativeShapes.h" />
     <ClInclude Include="Game.h" />
     <ClInclude Include="Level.h" />
+    <ClInclude Include="LevelView.h" />
+    <ClInclude Include="LevelDefinition.h" />
+    <ClInclude Include="LevelCatalog.h" />
+    <ClInclude Include="LevelMaps.h" />
+    <ClInclude Include="Config.h" />
     <ClInclude Include="LevelTypes.h" />
     <ClInclude Include="PlayerPhysics.h" />
     <ClInclude Include="Landscape.h" />

@@ -6,6 +6,8 @@
  
 
 #pragma warning(disable:4996)
+/// Legge il sorgente da disco in un buffer terminato da zero. Restituisce nullptr se il file non
+/// si apre. Il chiamante riceve la proprieta' del buffer allocato con new[].
 char* ShaderMaker::readShaderSource(const char* shaderFile)
 {
 	FILE* fp = fopen(shaderFile, "rb");
@@ -25,6 +27,8 @@ char* ShaderMaker::readShaderSource(const char* shaderFile)
 	return buf;
 }
 
+/// Compila i sorgenti dai due file, stampa gli eventuali errori di compilazione e tenta il link.
+/// Restituisce l'handle del programma senza verificare l'esito del link.
 GLuint ShaderMaker::createProgram(char* vertexfilename, char *fragmentfilename)
 {
  

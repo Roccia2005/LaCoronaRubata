@@ -1,7 +1,7 @@
 // Platformer 2D - main minimale: GLFW/GLAD, input, update e rendering.
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
-#include "Scene.h"
+#include "LevelView.h"
 #include "Shader.h"
 #include "Renderer.h"
 #include "BackgroundRenderer.h"
@@ -10,10 +10,12 @@
 #include <algorithm>
 #include <fstream>
 #include <iostream>
+#include <optional>
 #include <sstream>
 #include <string>
 
-// Legge il testo di uno shader; restituisce una stringa vuota se manca.
+/// Legge il file di testo usato come sorgente GLSL. Se l'apertura fallisce, scrive il percorso
+/// su stderr e restituisce una stringa vuota.
 std::string loadTextFile(const std::string& path)
 {
     std::ifstream file(path);
@@ -26,6 +28,95 @@ std::string loadTextFile(const std::string& path)
     return out.str();
 }
 
+namespace {
+
+struct PlayerKeys {
+    int left;
+    int right;
+    int jump;
+    int down;
+};
+
+constexpr PlayerKeys firstPlayerKeys{GLFW_KEY_A, GLFW_KEY_D, GLFW_KEY_W, GLFW_KEY_S};
+constexpr PlayerKeys secondPlayerKeys{GLFW_KEY_LEFT, GLFW_KEY_RIGHT, GLFW_KEY_UP, GLFW_KEY_DOWN};
+
+/// Legge lo stato dei quattro tasti associati al giocatore, incluso il salto tenuto.
+PlayerInput readPlayerInput(GLFWwindow* window, const PlayerKeys& keys)
+{
+    return {
+        glfwGetKey(window, keys.left) == GLFW_PRESS,
+        glfwGetKey(window, keys.right) == GLFW_PRESS,
+        glfwGetKey(window, keys.jump) == GLFW_PRESS,
+        glfwGetKey(window, keys.down) == GLFW_PRESS
+    };
+}
+
+struct ShaderSources {
+    std::string basicVertex;
+    std::string basicFragment;
+    std::string backgroundVertex;
+    std::string backgroundFragment;
+    std::string coinVertex;
+};
+
+/// Carica i sorgenti GLSL richiesti all'avvio. Il fragment shader di base viene
+/// condiviso fra gli oggetti ordinari e i cristalli.
+std::optional<ShaderSources> loadShaderSources()
+{
+    ShaderSources sources;
+    sources.basicVertex = loadTextFile("shaders/basic.vert");
+    sources.basicFragment = loadTextFile("shaders/basic.frag");
+    if (sources.basicVertex.empty() || sources.basicFragment.empty()) {
+        return std::nullopt;
+    }
+
+    sources.backgroundVertex = loadTextFile("shaders/background.vert");
+    sources.backgroundFragment = loadTextFile("shaders/background.frag");
+    if (sources.backgroundVertex.empty() || sources.backgroundFragment.empty()) {
+        return std::nullopt;
+    }
+
+    sources.coinVertex = loadTextFile("shaders/coin.vert");
+    if (sources.coinVertex.empty()) {
+        return std::nullopt;
+    }
+    return sources;
+}
+
+/// Sincronizza la vista con la simulazione, disegna la stanza e presenta il frame.
+/// Se il framebuffer non ha area, salta il disegno.
+void renderFrame(GLFWwindow* window, const Game& game, LevelView& levelView,
+                 Renderer& renderer, const BackgroundRenderer& background,
+                 const CoinRenderer& coinRenderer, float timeSeconds)
+{
+    int width = 0, height = 0;
+    glfwGetFramebufferSize(window, &width, &height);
+    if (width <= 0 || height <= 0) return;
+
+    const Level& level = game.level();
+    levelView.sync(level, game.levelNumber());
+    renderer.setRoomViewport(width, height, level.roomHalfSize());
+
+    const std::string title = "La Corona Rubata | Livello " +
+        std::to_string(game.levelNumber()) + " | Cristalli: " +
+        std::to_string(game.score()) +
+        (game.finished() ? " | Fine della prova - R reset" :
+                           " | W / Freccia su: salto - R reset");
+    glfwSetWindowTitle(window, title.c_str());
+
+    glClearColor(0.06f, 0.11f, 0.20f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT);
+    // Ordine: prima il fondale, poi gli oggetti del mondo.
+    background.draw(timeSeconds);
+    renderer.drawScene(levelView.scene());
+    coinRenderer.draw(levelView.scene(), renderer.projectionMatrix(), timeSeconds);
+    glfwSwapBuffers(window);
+}
+
+} // namespace
+
+/// Inizializza finestra, OpenGL e gioco. A ogni frame legge gli input, aggiorna la simulazione e
+/// disegna la vista della stanza. Rilascia le risorse GPU prima di distruggere il contesto.
 int main()
 {
     // 1. Finestra e contesto OpenGL 3.3 Core.
@@ -38,7 +129,7 @@ int main()
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
     GLFWwindow* window = glfwCreateWindow(
-        1100, 700, "Mountain Quest 2D - Robot e cristalli", nullptr, nullptr); //MODIFICARE
+        1100, 700, "La Corona Rubata", nullptr, nullptr);
     if (!window) {
         glfwTerminate();
         return 1;
@@ -54,63 +145,29 @@ int main()
         return 1;
     }
 
-    const std::string vertexSource = loadTextFile("shaders/basic.vert");
-    const std::string fragmentSource = loadTextFile("shaders/basic.frag");
-    if (vertexSource.empty() || fragmentSource.empty()) {
+    const auto shaderSources = loadShaderSources();
+    if (!shaderSources) {
         glfwDestroyWindow(window);
         glfwTerminate();
         return 1;
     }
 
-    // Carica anche i due sorgenti del programma shader dello sfondo.
-    const std::string backgroundVertex = loadTextFile("shaders/background.vert");
-    const std::string backgroundFragment = loadTextFile("shaders/background.frag");
-    if (backgroundVertex.empty() || backgroundFragment.empty()) {
-        glfwDestroyWindow(window);
-        glfwTerminate();
-        return 1;
-    }
-
-    // Terzo programma shader, riservato alle monete.
-    const std::string coinVertex = loadTextFile("shaders/coin.vert");
-    if (coinVertex.empty()) {
-        glfwDestroyWindow(window);
-        glfwTerminate();
-        return 1;
-    }
-
-    // 3.    
-            //
-            // Alcuni oggetti del progetto (Shader, Scene, Geometry)
-            // gestiscono risorse OpenGL, come programmi shader,
-            // VAO e VBO.
-            //
-            // Il blocco seguente garantisce che tali oggetti
-            // vengano distrutti PRIMA della distruzione del
-            // contesto OpenGL associato alla finestra GLFW.
-            //
-            // In questo modo i loro distruttori possono
-            // rilasciare correttamente le risorse OpenGL.
+    // Le risorse OpenGL vengono distrutte prima della finestra e del contesto.
     {
         // Shader e renderer per gli oggetti ordinari
-        Shader shader(vertexSource, fragmentSource);
+        Shader shader(shaderSources->basicVertex, shaderSources->basicFragment);
         Renderer renderer(shader);
 
         // Shader e render separato per lo sfondo (fullscreen quad in NDC).
-        Shader backgroundShader(backgroundVertex, backgroundFragment);
+        Shader backgroundShader(shaderSources->backgroundVertex, shaderSources->backgroundFragment);
         BackgroundRenderer background(backgroundShader);
 
         //Shader e render separato per le monete
-        Shader coinShader(coinVertex, fragmentSource);
+        Shader coinShader(shaderSources->coinVertex, shaderSources->basicFragment);
         CoinRenderer coinRenderer(coinShader);
-               
-        
-        Scene scene;
-        Game game(scene); // Crea personaggio, terreno, ostacoli e monete.
+        Game game;
+        LevelView levelView;
 
-        //Gestione del salto
-        bool previousJump1 = false;
-        bool previousJump2 = false;
         bool previousReset = false;
         double previousTime = glfwGetTime();
 
@@ -121,64 +178,26 @@ int main()
                 glfwSetWindowShouldClose(window, GLFW_TRUE);
 
             const double now = glfwGetTime();
+            // dt e' il tempo dall'ultimo frame, in secondi. Lo limitiamo con Config.h
+            // per ridurre il rischio di attraversare un ostacolo in un solo aggiornamento.
+            // Il passo resta variabile. L'eventuale tempo oltre il limite viene scartato.
             const float dt = std::clamp(
-                static_cast<float>(now - previousTime), 0.0f, 0.03f);
+                static_cast<float>(now - previousTime), 0.0f, GameConfig::MAX_FRAME_DELTA_SECONDS);
             previousTime = now;
 
-            int width = 0, height = 0;
-            glfwGetFramebufferSize(window, &width, &height);
-            if (width <= 0 || height <= 0) continue;
+            const auto input1 = readPlayerInput(window, firstPlayerKeys);
+            const auto input2 = readPlayerInput(window, secondPlayerKeys);
 
-            const float halfHeight = GameConfig::HALF_HEIGHT;
-            const float halfWidth = halfHeight * static_cast<float>(width) / height;
-            glViewport(0, 0, width, height);
-            renderer.setOrthoProjection(halfWidth, halfHeight);
-            game.resize(halfWidth);
-
-            //Gestione intreazioni 
-            const bool jumpDown1 = glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS;
-            const bool jumpDown2 = glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS;
-
-            const PlayerInput input1{
-                glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS,
-                glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS,
-                jumpDown1 && !previousJump1,
-                glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS
-            };
-
-            const PlayerInput input2{
-                glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS,
-                glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS,
-                jumpDown2 && !previousJump2,
-                glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS
-            };
-
-			const bool restart = glfwGetKey(window, GLFW_KEY_R) == GLFW_PRESS;
+            const bool restart = glfwGetKey(window, GLFW_KEY_R) == GLFW_PRESS;
 
             // Rileva il passaggio da tasto rilasciato a premuto.
             if (restart && !previousReset) game.reset();
             previousReset = restart;
-            game.update(dt, halfWidth, input1, input2, static_cast<float>(now));
-            previousJump1 = jumpDown1;
-            previousJump2 = jumpDown2;
+            game.update(dt, input1, input2, static_cast<float>(now));
 
-            const std::string title = "Mountain Quest 2D | Cristalli: " +
-                std::to_string(game.score()) + " | A/D muovi - SPACE salta - R reset";
-            glfwSetWindowTitle(window, title.c_str());
-
-            glClearColor(0.06f, 0.11f, 0.20f, 1.0f);
-            glClear(GL_COLOR_BUFFER_BIT);
-            // Ordine: prima il fondale, poi gli oggetti del mondo.
-            background.draw(static_cast<float>(now));
-            // Il renderer ordinario ESCLUDE la geometria delle monete.
-            renderer.drawScene(scene, game.coinGeometryIndex());
-            // Le monete sono disegnate una sola volta, con coin.vert.
-            coinRenderer.draw(scene, game, renderer.projectionMatrix(),
-                              static_cast<float>(now));
-            glfwSwapBuffers(window);
-        }  
-        // Scene viene svuotata mentre il contesto OpenGL e' ancora attivo.
-        scene.clear();
+            renderFrame(window, game, levelView, renderer, background, coinRenderer,
+                        static_cast<float>(now));
+        }
     } // Distruzione automatica degli oggetti locali.
 
     glfwDestroyWindow(window);

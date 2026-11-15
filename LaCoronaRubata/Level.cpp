@@ -1,171 +1,145 @@
 #include "Level.h"
-#include "DecorativeShapes.h"
 #include "PlayerPhysics.h"
-#include "ShapeGenerator.h"
-#include <glm/gtc/matrix_transform.hpp>
 #include <algorithm>
 #include <cmath>
 
 using namespace GameConfig;
 
 namespace {
-// T * S: i vertici locali rimangono nei VBO, cambia la Model Matrix.
-glm::mat4 makeModel(const glm::vec2& pos, float sx = 1.0f, float sy = 1.0f)
-{
-    return glm::translate(glm::mat4(1.0f), glm::vec3(pos, 0.0f)) *
-           glm::scale(glm::mat4(1.0f), glm::vec3(sx, sy, 1.0f));
-}
-} // namespace
 
-Level::Level(Scene& scene) : m_scene(scene)
-{
-    const auto floorGeo = m_scene.addGeometry(
-        ShapeGenerator::rectangle(1.0f, 1.0f, {107/255.0f, 112/255.0f, 107/255.0f}));
-    const auto obstacleGeo = m_scene.addGeometry(
-        DecorativeShapes::platformRock());
-    const auto coinGeo = m_scene.addGeometry(
-        DecorativeShapes::crystal(COIN_RADIUS));
-    createDoor();
-    createPlayer(m_players[0], -92.0f, DecorativeShapes::man());
-    createPlayer(m_players[1], -78.0f, DecorativeShapes::women());
-    createFloor(floorGeo);
-    createObstacles(obstacleGeo);
-    m_coinGeometryIndex = coinGeo;
-    createCoins(coinGeo);
-    updateModelMatrices();
+    Obstacle makePlateObstacle(const Pressable& plate)
+    {
+        const float height = plate.surfaceY() - plate.basePosition.y;
+        return {
+            plate.basePosition + glm::vec2{0.0f, height * 0.5f},
+            {plate.width, height}
+        };
+    }
+
+    bool isSupportedBy(const AABB& body, const AABB& solid)
+    {
+        constexpr float contactTolerance = 0.001f;
+
+        const float feetY = body.center.y - body.halfSize.y;
+        const float topY = solid.center.y + solid.halfSize.y;
+        const bool overlapsX =
+            std::abs(body.center.x - solid.center.x)
+            < body.halfSize.x + solid.halfSize.x;
+
+        return overlapsX && std::abs(feetY - topY) <= contactTolerance;
+    }
 }
 
-void Level::createPlayer(Player& player, float spawnX, const MeshData& mesh)
+/// Costruisce lo stato iniziale della stanza a partire dalla mappa. Imposta confini, spawn, area
+/// di uscita, ostacoli e cristalli.
+Level::Level(const LevelDefinition& definition)
+    : m_roomHalfSize(definition.roomHalfSize), m_floorY(definition.floorY)
 {
-    player.spawnPosition = {spawnX, FLOOR_Y + player.size.y * 0.5f};
-    const auto geometryIndex = m_scene.addGeometry(mesh);
-    player.instanceIndex = m_scene.addInstance(geometryIndex);
-    player.reset();
-}
+    for (std::size_t i = 0; i < m_players.size(); ++i) {
+        Player& player = m_players[i];
+        player.spawnPosition = definition.spawnFeet[i] + glm::vec2(0.0f, player.size.y * 0.5f);
+        player.reset();
+    }
 
-void Level::createDoor()
-{
-    constexpr float width = 12.0f;
-    constexpr float height = 16.0f;
-    constexpr float x = 75.0f;
-
-    const glm::vec2 doorSize{width, height};
-    const glm::vec2 doorCenter{x, FLOOR_Y + doorSize.y * 0.5f};
+    constexpr glm::vec2 doorSize{DOOR_WIDTH, DOOR_HEIGHT};
+    const glm::vec2 doorCenter = definition.doorBase + glm::vec2(0.0f, doorSize.y * 0.5f);
     m_exitArea = makeAABB(doorCenter, doorSize);
 
-    const auto meshes = DecorativeShapes::door();
-    const auto recess = m_scene.addInstance(m_scene.addGeometry(meshes.recess));
-    const auto model = makeModel(doorCenter, doorSize.x, doorSize.y);
-    m_scene.instance(recess).modelMatrix = model;
-    for (std::size_t i = 0; i < m_doorLeaves.size(); ++i) {
-        m_doorLeaves[i] = m_scene.addInstance(m_scene.addGeometry(meshes.leaves[i]));
+    for (const auto& platform : definition.platforms) {
+        const glm::vec2 center = platform.basePosition + glm::vec2(0.0f, platform.size.y * 0.5f);
+        m_obstacles.push_back({center, platform.size});
     }
-    const auto frame = m_scene.addInstance(m_scene.addGeometry(meshes.frame));
-    m_scene.instance(frame).modelMatrix = model;
-    updateDoorLeaves();
+    for (const auto& position : definition.crystals) {
+        m_coins.push_back({position});
+    }
+    for (const auto& plate : definition.pressurePlates) {
+        m_pressurePlates.push_back({
+            plate.basePosition, plate.width, plate.height, plate.pressDistance
+        });
+    }
 }
 
+/// Avanza la fisica dei giocatori di dt secondi, poi aggiorna la porta e verifica la raccolta.
+/// currentTime e' il tempo in secondi usato per calcolare l'oscillazione dei cristalli.
+void Level::update(float dt, const PlayerInput& input1, const PlayerInput& input2,
+                   float currentTime)
+{
+    auto solids = m_obstacles;
+    solids.reserve(solids.size() + m_pressurePlates.size());
+    appendPressurePlateObstacles(solids);
+
+    PlayerPhysics::updatePlayers(m_players[0], m_players[1], input1, input2,
+        dt, m_roomHalfSize.x, m_floorY, solids);
+    updateDoor(dt);
+    updatePressurePlates();
+    collectCoins(currentTime);
+}
+
+/// Restituisce true quando il rettangolo del giocatore si sovrappone all'area di uscita.
 bool Level::isAtDoor(const Player& player) const
 {
     return PlayerPhysics::intersects(makeAABB(player.position, player.size), m_exitArea);
 }
 
+/// Fa avanzare l'apertura se almeno un giocatore occupa l'uscita, altrimenti la fa diminuire. Il
+/// valore resta fra 0 e 1 e una transizione completa dura 0.35 secondi.
 void Level::updateDoor(float dt)
 {
-    constexpr float openingDuration = 0.35f;
     const bool shouldOpen = isAtDoor(m_players[0]) || isAtDoor(m_players[1]);
-    const float step = dt / openingDuration;
-    const float opening = std::clamp(m_doorOpening + (shouldOpen ? step : -step),
-                                     0.0f, 1.0f);
-    if (opening != m_doorOpening) {
-        m_doorOpening = opening;
-        updateDoorLeaves();
+    const float step = dt / DOOR_OPENING_SECONDS;
+    m_doorOpening = std::clamp(m_doorOpening + (shouldOpen ? step : -step), 0.0f, 1.0f);
+}
+
+void Level::updatePressurePlates()
+{
+    for (Pressable& plate : m_pressurePlates) {
+        const Obstacle solid = makePlateObstacle(plate);
+        const AABB plateBox = makeAABB(solid.position, solid.size);
+
+        std::array<bool, 2> supported{};
+        for (std::size_t i = 0; i < m_players.size(); ++i) {
+            const Player& player = m_players[i];
+            supported[i] = player.onGround && player.velocity.y <= 0.0f
+                && isSupportedBy(makeAABB(player.position, player.size), plateBox);
+        }
+
+        const bool shouldPress = supported[0] || supported[1];
+        if (shouldPress == plate.pressed) {
+            continue;
+        }
+
+        if (!shouldPress) {
+            // Prima di risalire, verifica che ci sia spazio.
+            Pressable released = plate;
+            released.pressed = false;
+            const Obstacle raised = makePlateObstacle(released);
+            const AABB raisedBox = makeAABB(raised.position, raised.size);
+
+            const bool blocked = std::any_of(
+                m_players.begin(), m_players.end(), [&](const Player& player) {
+                    return PlayerPhysics::intersects(
+                        makeAABB(player.position, player.size), raisedBox);
+                });
+
+            if (blocked) {
+                continue;
+            }
+        }
+
+        const float previousSurfaceY = plate.surfaceY();
+        plate.pressed = shouldPress;
+        const float deltaY = plate.surfaceY() - previousSurfaceY;
+
+        for (std::size_t i = 0; i < m_players.size(); ++i) {
+            if (supported[i]) {
+                m_players[i].position.y += deltaY;
+            }
+        }
     }
 }
 
-void Level::updateDoorLeaves()
-{
-    const glm::vec2 doorSize = m_exitArea.halfSize * 2.0f;
-    const float scaleX = 1.0f - 0.9f * m_doorOpening;
-    for (std::size_t i = 0; i < m_doorLeaves.size(); ++i) {
-        const float hingeX = DecorativeShapes::DoorMeshes::hingeX[i];
-        // Equivale a T(cardine) * S * T(-cardine) in coordinate locali.
-        const glm::vec2 offset{doorSize.x * hingeX * (1.0f - scaleX), 0.0f};
-        m_scene.instance(m_doorLeaves[i]).modelMatrix =
-            makeModel(m_exitArea.center + offset, doorSize.x * scaleX, doorSize.y);
-    }
-}
-
-void Level::createFloor(std::size_t floorGeo)
-{
-    m_floorInstance = m_scene.addInstance(floorGeo);
-}
-
-void Level::createObstacles(std::size_t obstacleGeo)
-{
-    // Ogni elemento: {centro X, larghezza, altezza}.
-    const std::vector<std::array<float, 3>> specs = {
-        {{-43.0f, 10.0f, 15.0f}},
-        {{  0.0f, 12.0f, 22.0f}},
-        {{ 48.0f, 10.0f, 18.0f}}
-    };
-    const auto grassGeo = m_scene.addGeometry(DecorativeShapes::grassStrip());
-    for (const auto& spec : specs) {
-        Obstacle o;
-        o.instanceIndex = m_scene.addInstance(obstacleGeo);
-        o.position = {spec[0], FLOOR_Y + spec[2] * 0.5f};
-        o.size = {spec[1], spec[2]};
-        m_scene.instance(o.instanceIndex).modelMatrix =
-            makeModel(o.position, o.size.x, o.size.y);
-        // Il prato e' decorativo: non modifica la AABB dell'ostacolo.
-        const std::size_t grass = m_scene.addInstance(grassGeo);
-        m_scene.instance(grass).modelMatrix =
-            makeModel({o.position.x, FLOOR_Y + o.size.y - 0.45f}, o.size.x, 1.3f);
-        m_obstacles.push_back(o);
-    }
-}
-
-void Level::createCoins(std::size_t coinGeo)
-{
-    const std::vector<glm::vec2> positions = {
-        {-68.0f, -27.0f}, {-43.0f, -21.0f}, {-18.0f, -23.0f},
-        {0.0f, -13.0f}, {24.0f, -28.0f}, {48.0f, -17.0f}, {77.0f, -28.0f}
-    };
-    for (const glm::vec2& pos : positions) {
-        Collectible coin;
-        coin.instanceIndex = m_scene.addInstance(coinGeo);
-        coin.position = pos;
-        coin.collected = false;
-        m_scene.instance(coin.instanceIndex).modelMatrix = makeModel(pos);
-        m_coins.push_back(coin);
-    }
-}
-
-void Level::update(float dt, float halfWidth, const PlayerInput& input1, const PlayerInput& input2, float currentTime)
-{
-    PlayerPhysics::updatePlayers(m_players[0], m_players[1], input1, input2,
-                                 dt, halfWidth, m_obstacles);
-
-    updateModelMatrices();
-    updateDoor(dt);
-    collectCoins(currentTime);
-}
-
-void Level::resize(float halfWidth)
-{
-    // Il terreno si allarga con la finestra; il bordo superiore resta a FLOOR_Y.
-    m_scene.instance(m_floorInstance).modelMatrix =
-        makeModel({0.0f, FLOOR_Y - 3.0f}, 2.0f * halfWidth, 6.0f);
-}
-
-void Level::updateModelMatrices()
-{
-    for (const Player& player : m_players) {
-        m_scene.instance(player.instanceIndex).modelMatrix =
-            makeModel(player.position, player.size.x, player.size.y);
-    }
-}
-
+/// Controlla il contatto del primo giocatore con i cristalli ancora disponibili, alla loro
+/// posizione oscillante. Ogni nuova raccolta assegna 10 punti.
 void Level::collectCoins(float currentTime)
 {
     const AABB playerBox{m_players[0].position, m_players[0].size * 0.5f};
@@ -180,28 +154,35 @@ void Level::collectCoins(float currentTime)
         const AABB coinBox{animatedPosition, {COIN_RADIUS, COIN_RADIUS}};
         if (PlayerPhysics::intersects(playerBox, coinBox)) {
             coin.collected = true;
-            m_scene.instance(coin.instanceIndex).visible = false;
-            m_score += 10;
+            m_score += POINTS_PER_CRYSTAL;
         }
     }
 }
 
+/// Restituisce true quando la porta e' completamente aperta ed entrambi i giocatori sono
+/// nell'area di uscita.
 bool Level::isFinished() const
 {
     return m_doorOpening >= 1.0f && isAtDoor(m_players[0]) && isAtDoor(m_players[1]);
 }
 
+/// Riporta i giocatori agli spawn, chiude la porta, azzera il punteggio e rende di nuovo
+/// raccoglibili i cristalli.
 void Level::reset()
 {
     m_doorOpening = 0.0f;
-    updateDoorLeaves();
     for (Player& player : m_players) {
         player.reset();
     }
     m_score = 0;
     for (Collectible& coin : m_coins) {
         coin.collected = false;
-        m_scene.instance(coin.instanceIndex).visible = true;
     }
-    updateModelMatrices();
+}
+
+void Level::appendPressurePlateObstacles(std::vector<Obstacle>& solids) const
+{
+    for (const Pressable& plate : m_pressurePlates) {
+        solids.push_back(makePlateObstacle(plate));
+    }
 }

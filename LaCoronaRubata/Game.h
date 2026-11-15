@@ -1,17 +1,20 @@
 #pragma once
 #include "Level.h"
+#include <cstddef>
 
 class Game {
 public:
-    explicit Game(Scene& scene);
-    void update(float dt, float halfWidth, const PlayerInput& input1,
-                const PlayerInput& input2, float currentTime);
+    Game();
+    void update(float dt, const PlayerInput& input1, const PlayerInput& input2,
+                float currentTime);
     void reset();
-    void resize(float halfWidth);
+    const Level& level() const { return m_level; }
     int score() const { return m_level.score(); }
-    std::size_t coinGeometryIndex() const { return m_level.coinGeometryIndex(); }
-    const std::vector<Collectible>& coins() const { return m_level.coins(); }
+    std::size_t levelNumber() const { return m_levelIndex + 1; }
+    bool finished() const { return m_finished; }
 
 private:
     Level m_level;
+    std::size_t m_levelIndex = 0;
+    bool m_finished = false;
 };

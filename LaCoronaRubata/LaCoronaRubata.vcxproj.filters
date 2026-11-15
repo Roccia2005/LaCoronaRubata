@@ -7,6 +7,30 @@
     <Filter Include="Header Files">
       <UniqueIdentifier>{A0E1C663-4B08-4A4D-B567-80B6071C5002}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\Simulazione">
+      <UniqueIdentifier>{BF7D3AB8-6F37-431A-A46E-D56E25CF6AF1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Rendering">
+      <UniqueIdentifier>{3CE70946-1293-4142-9062-9A53E13E5F5C}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Forme">
+      <UniqueIdentifier>{7FF14F8F-79D0-43DF-B355-60F2059AF4BF}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Input e interfaccia">
+      <UniqueIdentifier>{8F17434B-286C-4C8C-A870-88EDE0A558A0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\Simulazione">
+      <UniqueIdentifier>{32BDCF81-CB0D-433F-B8FC-F640F47FCC33}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\Rendering">
+      <UniqueIdentifier>{1350EF78-0C51-4BDE-AD69-A33D2739AD38}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\Forme">
+      <UniqueIdentifier>{53AD16C4-F561-43C0-81FB-F43174127AE1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\Input e interfaccia">
+      <UniqueIdentifier>{6304C34F-4749-4F60-9A4A-211C6999D19C}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Shader">
       <UniqueIdentifier>{A0E1C663-4B08-4A4D-B567-80B6071C5003}</UniqueIdentifier>
     </Filter>
@@ -34,28 +58,28 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="ShapeGenerator.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Source Files\Forme</Filter>
     </ClCompile>
     <ClCompile Include="Geometry.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Source Files\Rendering</Filter>
     </ClCompile>
     <ClCompile Include="Scene.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Source Files\Rendering</Filter>
     </ClCompile>
     <ClCompile Include="Renderer.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Source Files\Rendering</Filter>
     </ClCompile>
     <ClCompile Include="Gui.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Source Files\Input e interfaccia</Filter>
     </ClCompile>
     <ClCompile Include="Input.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Source Files\Input e interfaccia</Filter>
     </ClCompile>
     <ClCompile Include="Shader.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Source Files\Rendering</Filter>
     </ClCompile>
     <ClCompile Include="ShaderMaker.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Source Files\Rendering</Filter>
     </ClCompile>
     <ClCompile Include="dependencies_GL_GLFW\glad.c">
       <Filter>Dipendenze esterne\GLAD</Filter>
@@ -82,54 +106,63 @@
       <Filter>Dipendenze esterne\ImGui\Source Files</Filter>
     </ClCompile>
     <ClCompile Include="BackgroundRenderer.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Source Files\Rendering</Filter>
     </ClCompile>
     <ClCompile Include="CoinRenderer.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Source Files\Rendering</Filter>
     </ClCompile>
     <ClCompile Include="DecorativeShapes.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Source Files\Forme</Filter>
     </ClCompile>
     <ClCompile Include="Game.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Source Files\Simulazione</Filter>
     </ClCompile>
     <ClCompile Include="Level.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Source Files\Simulazione</Filter>
+    </ClCompile>
+    <ClCompile Include="LevelCatalog.cpp">
+      <Filter>Source Files\Simulazione</Filter>
+    </ClCompile>
+    <ClCompile Include="LevelMaps.cpp">
+      <Filter>Source Files\Simulazione</Filter>
+    </ClCompile>
+    <ClCompile Include="LevelView.cpp">
+      <Filter>Source Files\Rendering</Filter>
     </ClCompile>
     <ClCompile Include="PlayerPhysics.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Source Files\Simulazione</Filter>
     </ClCompile>
     <ClCompile Include="Landscape.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Source Files\Rendering</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="MeshData.h">
-      <Filter>Header Files</Filter>
+      <Filter>Header Files\Forme</Filter>
     </ClInclude>
     <ClInclude Include="ShapeGenerator.h">
-      <Filter>Header Files</Filter>
+      <Filter>Header Files\Forme</Filter>
     </ClInclude>
     <ClInclude Include="Geometry.h">
-      <Filter>Header Files</Filter>
+      <Filter>Header Files\Rendering</Filter>
     </ClInclude>
     <ClInclude Include="Scene.h">
-      <Filter>Header Files</Filter>
+      <Filter>Header Files\Rendering</Filter>
     </ClInclude>
     <ClInclude Include="Renderer.h">
-      <Filter>Header Files</Filter>
+      <Filter>Header Files\Rendering</Filter>
     </ClInclude>
     <ClInclude Include="Gui.h">
-      <Filter>Header Files</Filter>
+      <Filter>Header Files\Input e interfaccia</Filter>
     </ClInclude>
     <ClInclude Include="Input.h">
-      <Filter>Header Files</Filter>
+      <Filter>Header Files\Input e interfaccia</Filter>
     </ClInclude>
     <ClInclude Include="Shader.h">
-      <Filter>Header Files</Filter>
+      <Filter>Header Files\Rendering</Filter>
     </ClInclude>
     <ClInclude Include="ShaderMaker.h">
-      <Filter>Header Files</Filter>
+      <Filter>Header Files\Rendering</Filter>
     </ClInclude>
     <ClInclude Include="dependencies_GL_GLFW\include\glad\glad.h">
       <Filter>Dipendenze esterne\GLAD</Filter>
@@ -171,28 +204,43 @@
       <Filter>Dipendenze esterne\ImGui\Header Files</Filter>
     </ClInclude>
     <ClInclude Include="BackgroundRenderer.h">
-      <Filter>Header Files</Filter>
+      <Filter>Header Files\Rendering</Filter>
     </ClInclude>
     <ClInclude Include="CoinRenderer.h">
-      <Filter>Header Files</Filter>
+      <Filter>Header Files\Rendering</Filter>
     </ClInclude>
     <ClInclude Include="DecorativeShapes.h">
-      <Filter>Header Files</Filter>
+      <Filter>Header Files\Forme</Filter>
     </ClInclude>
     <ClInclude Include="Game.h">
-      <Filter>Header Files</Filter>
+      <Filter>Header Files\Simulazione</Filter>
     </ClInclude>
     <ClInclude Include="Level.h">
-      <Filter>Header Files</Filter>
+      <Filter>Header Files\Simulazione</Filter>
+    </ClInclude>
+    <ClInclude Include="LevelView.h">
+      <Filter>Header Files\Rendering</Filter>
+    </ClInclude>
+    <ClInclude Include="LevelDefinition.h">
+      <Filter>Header Files\Simulazione</Filter>
+    </ClInclude>
+    <ClInclude Include="LevelCatalog.h">
+      <Filter>Header Files\Simulazione</Filter>
+    </ClInclude>
+    <ClInclude Include="LevelMaps.h">
+      <Filter>Header Files\Simulazione</Filter>
+    </ClInclude>
+    <ClInclude Include="Config.h">
+      <Filter>Header Files\Simulazione</Filter>
     </ClInclude>
     <ClInclude Include="LevelTypes.h">
-      <Filter>Header Files</Filter>
+      <Filter>Header Files\Simulazione</Filter>
     </ClInclude>
     <ClInclude Include="PlayerPhysics.h">
-      <Filter>Header Files</Filter>
+      <Filter>Header Files\Simulazione</Filter>
     </ClInclude>
     <ClInclude Include="Landscape.h">
-      <Filter>Header Files</Filter>
+      <Filter>Header Files\Rendering</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

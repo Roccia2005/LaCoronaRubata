@@ -1,6 +1,6 @@
 #pragma once
 #include "Shader.h"
-#include "Game.h"
+#include "Scene.h"
 #include <glm/glm.hpp>
 
 // Disegna soltanto le monete con il vertex shader animato.
@@ -8,8 +8,7 @@
 class CoinRenderer {
 public:
     explicit CoinRenderer(const Shader& shader) : m_shader(shader) {}
-    void draw(const Scene& scene, const Game& game,
-              const glm::mat4& projection, float timeSeconds) const;
+    void draw(const Scene& scene, const glm::mat4& projection, float timeSeconds) const;
 private:
     const Shader& m_shader;
 };

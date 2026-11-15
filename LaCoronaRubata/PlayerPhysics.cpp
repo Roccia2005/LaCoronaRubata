@@ -4,8 +4,8 @@
 
 using namespace GameConfig;
 
-// Due rettangoli AABB si intersecano solo se si sovrappongono su X e Y.
-// Cambiare posizione, non è un metodo della classe PlayerPhysics, perche' non serve accedere a membri privati.
+/// Verifica se due AABB si sovrappongono su entrambi gli assi. Il semplice contatto sul bordo
+/// restituisce false.
 bool PlayerPhysics::intersects(const AABB& a, const AABB& b)
 {
     return std::abs(a.center.x - b.center.x) < a.halfSize.x + b.halfSize.x &&
@@ -15,7 +15,8 @@ bool PlayerPhysics::intersects(const AABB& a, const AABB& b)
 namespace {
 using PlayerPhysics::intersects;
 
-// Collisione verticale tra player e ostacoli
+/// Corregge le compenetrazioni verticali con gli ostacoli. Azzera la velocita' verticale e segna
+/// l'appoggio quando il giocatore atterra sulla superficie.
 void verticalCollision(Player& player, const std::vector<Obstacle>& obstacles)
 {
     const float halfPlayerHeight = player.size.y * 0.5f;
@@ -38,6 +39,8 @@ void verticalCollision(Player& player, const std::vector<Obstacle>& obstacles)
         player.velocity.y = 0.0f;
     }
 }
+/// Corregge la posizione orizzontale al lato dell'ostacolo incontrato e azzera la velocita' su
+/// x.
 void horizontalCollision(Player& player, const std::vector<Obstacle>& obstacles)
 {
     const float horizontalVelocity = player.velocity.x;
@@ -69,12 +72,16 @@ struct VerticalBounds {
     float head;
 };
 
+/// Restituisce le quote dei piedi e della testa a partire dal centro e dall'altezza attuale del
+/// giocatore.
 VerticalBounds verticalBounds(const Player& player)
 {
     const float halfHeight = player.size.y * 0.5f;
     return {player.position.y - halfHeight, player.position.y + halfHeight};
 }
 
+/// Usa le quote prima e dopo il movimento per risolvere l'appoggio sulla testa e gli urti dal
+/// basso. Se rialzarsi causerebbe una sovrapposizione, ripristina l'altezza precedente.
 void resolvePlayerVerticalContact(Player& upper, Player& lower,
                                   VerticalBounds upperBefore, VerticalBounds lowerBefore)
 {
@@ -126,49 +133,57 @@ void resolvePlayerVerticalContact(Player& upper, Player& lower,
     }
 }
 
-// Aggiorna il personaggio in quattro fasi:
-// 1) input e salto; 2) movimento orizzontale; 3) gravita'; 4) collisioni verticali.
-// La separazione degli assi rende piu' facile capire la risposta alle collisioni.
-void updatePlayer(Player& player, float dt, float halfWidth, const PlayerInput& input,
-                  const std::vector<Obstacle>& obstacles)
+/// Applica i comandi di movimento, salto e abbassamento.
+/// Il salto viene valutato prima della postura, che dipende dall'appoggio.
+void applyPlayerInput(Player& player, const PlayerInput& input)
 {
-    const float halfPlayerWidth = player.size.x * 0.5f;
-
-    // FASE 1: input. Due tasti opposti si annullano.
+    // Due tasti opposti si annullano.
     player.velocity.x = (float(input.right) - float(input.left)) * MOVE_SPEED;
 
     // Il salto e' consentito solo se il personaggio e' appoggiato.
-    if (input.jumpPressed && player.onGround) {
+    if (input.jumpHeld && player.onGround) {
         player.velocity.y = JUMP_SPEED;
         player.onGround = false;
     }
 
     // Mantieni i piedi alla stessa quota quando cambia la postura.
     const bool crouching = input.down && player.onGround;
-    const float newHeight = crouching ? PLAYER_HEIGHT * 0.5f : PLAYER_HEIGHT;
+    const float newHeight = crouching ? PLAYER_HEIGHT * CROUCH_HEIGHT_RATIO : PLAYER_HEIGHT;
     if (newHeight != player.size.y) {
         player.position.y += (newHeight - player.size.y) * 0.5f;
         player.size.y = newHeight;
     }
+}
+
+/// Integra il movimento di un giocatore per dt secondi. Applica input, limiti della stanza,
+/// gravita' e collisioni con pavimento e ostacoli. Con il salto tenuto, riparte al successivo
+/// aggiornamento in cui il giocatore risulta appoggiato.
+void updatePlayer(Player& player, float dt, float roomHalfWidth, float floorY,
+                  const PlayerInput& input,
+                  const std::vector<Obstacle>& obstacles)
+{
+    const float halfPlayerWidth = player.size.x * 0.5f;
+
+    applyPlayerInput(player, input);
     const float halfPlayerHeight = player.size.y * 0.5f;
 
-    // FASE 2: movimento orizzontale e collisioni laterali.
+    // Movimento orizzontale e collisioni laterali.
     player.position.x += player.velocity.x * dt;
     player.position.x = std::clamp(
         player.position.x,
-        -halfWidth + halfPlayerWidth,
-        halfWidth - halfPlayerWidth
+        -roomHalfWidth + halfPlayerWidth,
+        roomHalfWidth - halfPlayerWidth
     );
     horizontalCollision(player, obstacles);
 
-    // FASE 3: gravita' e integrazione di Eulero semi-implicito.
+    // Gravita' e integrazione di Eulero semi-implicito.
     player.velocity.y += GRAVITY * dt;
     player.position.y += player.velocity.y * dt;
     player.onGround = false; // verra' aggiornato dalle collisioni.
 
-    // FASE 4a: collisione con il pavimento.
-    if (player.position.y - halfPlayerHeight <= FLOOR_Y) {
-        player.position.y = FLOOR_Y + halfPlayerHeight;
+    // Collisione con il pavimento.
+    if (player.position.y - halfPlayerHeight <= floorY) {
+        player.position.y = floorY + halfPlayerHeight;
         player.velocity.y = 0.0f;
         player.onGround = true;
     }
@@ -177,15 +192,18 @@ void updatePlayer(Player& player, float dt, float halfWidth, const PlayerInput& 
 }
 } // namespace
 
+/// Aggiorna entrambi i giocatori con i rispettivi input e poi risolve il contatto verticale
+/// reciproco usando le quote registrate prima del movimento.
 void PlayerPhysics::updatePlayers(Player& first, Player& second,
                                   const PlayerInput& input1, const PlayerInput& input2,
-                                  float dt, float halfWidth, const std::vector<Obstacle>& obstacles)
+                                  float dt, float roomHalfWidth, float floorY,
+                                  const std::vector<Obstacle>& obstacles)
 {
     const auto firstBefore = verticalBounds(first);
     const auto secondBefore = verticalBounds(second);
 
-    updatePlayer(first, dt, halfWidth, input1, obstacles);
-    updatePlayer(second, dt, halfWidth, input2, obstacles);
+    updatePlayer(first, dt, roomHalfWidth, floorY, input1, obstacles);
+    updatePlayer(second, dt, roomHalfWidth, floorY, input2, obstacles);
     resolvePlayerVerticalContact(first, second, firstBefore, secondBefore);
     resolvePlayerVerticalContact(second, first, secondBefore, firstBefore);
 }

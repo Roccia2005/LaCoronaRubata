@@ -2,6 +2,8 @@
 #include <array>
 #include <cmath>
 namespace ShapeGenerator {
+/// Restituisce una mesh centrata nell'origine, di larghezza w e altezza h, composta da due
+/// triangoli dello stesso colore.
 MeshData rectangle(float w,float h,const glm::vec3& color) {
     const float x=w*0.5f,y=h*0.5f;
     const std::array<glm::vec2,6> pts={glm::vec2(-x,-y),{x,-y},{x,y},{-x,-y},{x,y},{-x,y}};
@@ -9,6 +11,8 @@ MeshData rectangle(float w,float h,const glm::vec3& color) {
     for(const auto& v:pts) mesh.vertices.insert(mesh.vertices.end(),{v.x,v.y,color.r,color.g,color.b});
     return mesh;
 }
+/// Approssima un disco di raggio r con segments triangoli radiali di colore uniforme. Il numero
+/// di segmenti determina la risoluzione del contorno.
 MeshData disk(float r,const glm::vec3& color,int segments) {
     MeshData mesh;
     const float pi=3.14159265358979323846f;

@@ -7,5 +7,6 @@ bool intersects(const AABB& a, const AABB& b);
 
 void updatePlayers(Player& first, Player& second,
                    const PlayerInput& input1, const PlayerInput& input2,
-                   float dt, float halfWidth, const std::vector<Obstacle>& obstacles);
+                   float dt, float roomHalfWidth, float floorY,
+                   const std::vector<Obstacle>& obstacles);
 }

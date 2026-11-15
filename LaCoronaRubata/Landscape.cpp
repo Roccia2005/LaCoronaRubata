@@ -15,10 +15,11 @@
 // ======================================================
 
 namespace {
-    // Una mesh e' una sequenza di triangoli non indicizzati.
+    /// Aggiunge alla mesh una posizione 2D seguita dal suo colore RGB.
     void appendVertex(MeshData& mesh, const glm::vec2& p, const glm::vec3& c) {
         mesh.vertices.insert(mesh.vertices.end(), {p.x, p.y, c.r, c.g, c.b});
     }
+    /// Aggiunge alla mesh i tre vertici di un triangolo con colore uniforme.
     void appendTriangle(MeshData& mesh, const glm::vec2& a,
                         const glm::vec2& b, const glm::vec2& c,
                         const glm::vec3& color) {
@@ -26,14 +27,16 @@ namespace {
         appendVertex(mesh, b, color);
         appendVertex(mesh, c, color);
     }
+    /// Restituisce la matrice che scala la forma alle dimensioni richieste e la trasla nel punto
+    /// center.
     glm::mat4 model(const glm::vec2& center, const glm::vec2& size) {
         return glm::translate(glm::mat4(1.0f), glm::vec3(center, 0.0f)) *
                glm::scale(glm::mat4(1.0f), glm::vec3(size, 1.0f));
     }
 }
 
-// Calcola y(x) sul segmento del profilo che contiene x.
-// E' l'interpolazione lineare: y = y0 + t*(y1-y0).
+/// Interpola la quota del profilo nel segmento che contiene x. Se x e' fuori dal profilo,
+/// restituisce la quota del primo campione. Il profilo deve contenere almeno un punto.
 float Landscape::heightOnSlope(const std::vector<glm::vec2>& profile, float x) {
     for (std::size_t i = 1; i < profile.size(); ++i) {
         const auto& a = profile[i-1];
@@ -46,9 +49,9 @@ float Landscape::heightOnSlope(const std::vector<glm::vec2>& profile, float x) {
     return profile.front().y;
 }
 
-// Genera una superficie sinusoidale nel riferimento locale.
-// Sequenza: base_0, cima_0, base_1, cima_1, ...
-// GL_TRIANGLE_STRIP costruisce automaticamente 2*segments triangoli.
+/// Campiona il profilo sinusoidale, aggiunge alla scena una striscia di triangoli traslata in
+/// position e restituisce i punti della cresta in coordinate locali. Con parametri geometrici
+/// non validi restituisce un profilo vuoto.
 std::vector<glm::vec2> Landscape::addMountain(
     float width, float height, float amplitude,
     float frequency, float phase, int segments,
@@ -77,8 +80,8 @@ std::vector<glm::vec2> Landscape::addMountain(
     return profile;
 }
 
-// Un albero e' formato da 1 istanza di tronco + 2 istanze
-// della stessa chioma triangolare (due triangoli sovrapposti).
+/// Posiziona un albero con base a (x, groundY). Usa un'istanza del tronco e due della chioma,
+/// scalate in base a size.
 void Landscape::addTree(float x, float groundY, float size,
                         std::size_t trunkGeometry, std::size_t crownGeometry) {
     const float trunkH = 5.5f * size;
@@ -95,6 +98,8 @@ void Landscape::addTree(float x, float groundY, float size,
         model({x, groundY + trunkH + 5.0f * size}, {6.0f * size, 7.0f * size});
 }
 
+/// Costruisce il paesaggio del laboratorio con tre profili e alberi sulla collina vicina. I
+/// tronchi condividono una mesh e le chiome ne condividono un'altra.
 Landscape::Landscape() {
     // Le tre montagne condividono la stessa base nel mondo.
     const glm::vec2 mountainPosition(-160.0f, -65.0f);
@@ -159,7 +164,10 @@ Landscape::Landscape() {
 
 }
 
+/// Disegna la scena del paesaggio tramite il renderer ricevuto, usando la sua proiezione
+/// corrente.
 void Landscape::draw(const Renderer& renderer) const {
     renderer.drawScene(m_scene);
 }
+/// Rimuove le istanze del paesaggio e rilascia le relative geometrie GPU.
 void Landscape::clear() { m_scene.clear(); }

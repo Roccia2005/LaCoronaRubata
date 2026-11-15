@@ -1,4 +1,6 @@
 #include "Geometry.h"
+/// Carica nella GPU i vertici di mesh e configura il VAO per il formato x, y, r, g, b. Memorizza
+/// la primitiva e il numero di vertici da disegnare.
 Geometry::Geometry(const MeshData& mesh) {
     m_vertexCount=static_cast<GLsizei>(mesh.vertices.size()/5);
     m_primitive=mesh.primitive;
@@ -13,10 +15,14 @@ Geometry::Geometry(const MeshData& mesh) {
     glEnableVertexAttribArray(1);
     glBindVertexArray(0);
 }
+/// Rilascia il VBO e il VAO posseduti dalla geometria. Il contesto OpenGL deve essere ancora
+/// attivo.
 Geometry::~Geometry() {
     if(m_vbo) glDeleteBuffers(1,&m_vbo);
     if(m_vao) glDeleteVertexArrays(1,&m_vao);
 }
+/// Associa il VAO ed emette una draw call con la primitiva e il numero di vertici della mesh. Il
+/// renderer deve avere gia' impostato programma e uniform.
 void Geometry::draw() const {
     glBindVertexArray(m_vao);
     glDrawArrays(m_primitive,0,m_vertexCount);

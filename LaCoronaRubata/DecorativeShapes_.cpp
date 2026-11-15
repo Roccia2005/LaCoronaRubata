@@ -1,15 +1,19 @@
 #include "DecorativeShapes.h"
 #include <cmath>
 namespace {
+/// Aggiunge alla mesh tre vertici con lo stesso colore RGB.
 void triangle(MeshData& m, glm::vec2 a, glm::vec2 b, glm::vec2 c, glm::vec3 col) {
     for (const auto& v : {a,b,c}) m.vertices.insert(m.vertices.end(), {v.x,v.y,col.r,col.g,col.b});
 }
+/// Aggiunge un rettangolo di colore uniforme usando due triangoli definiti da angoli opposti.
 void rect(MeshData& m, float x0,float y0,float x1,float y1,glm::vec3 col) {
     triangle(m,{x0,y0},{x1,y0},{x1,y1},col);
     triangle(m,{x0,y0},{x1,y1},{x0,y1},col);
 }
 }
 namespace DecorativeShapes {
+/// Compone la sagoma del robot del laboratorio. w e h scalano le coordinate locali delle singole
+/// parti.
 MeshData robot(float w,float h) {
     MeshData m;
     // Corpo, testa, schermo, occhi e piedi: una singola mesh non animata.
@@ -26,6 +30,8 @@ MeshData robot(float w,float h) {
     rect(m,-.10f*w,.52f*h,.10f*w,.57f*h,{1.f,.83f,.30f});
     return m;
 }
+/// Genera un cristallo sfaccettato attorno all'origine. r determina la distanza delle punte
+/// verticali dal centro.
 MeshData crystal(float r) {
     MeshData m;
     // Cristallo sfaccettato con sagoma romboidale, centrato nell'origine.
@@ -37,6 +43,8 @@ MeshData crystal(float r) {
     triangle(m,{-.28f*r,.25f*r},{-.17f*r,.50f*r},{-.05f*r,.32f*r},{.85f,1.f,1.f});
     return m;
 }
+/// Genera un blocco unitario con triangoli colorati che suggeriscono le sfaccettature della
+/// roccia.
 MeshData platformRock() {
     MeshData m;
     // Rettangolo unitario, che mantiene la AABB fisica invariata.
@@ -46,6 +54,7 @@ MeshData platformRock() {
     triangle(m,{-.35f,.1f},{.0f,-.13f},{.20f,.16f},{.46f,.49f,.53f});
     return m;
 }
+/// Genera una fascia d'erba con due strati di colore e una fila di ciuffi triangolari.
 MeshData grassStrip() {
     MeshData m;
     rect(m,-.5f,-.5f,.5f,.30f,{.19f,.65f,.32f});

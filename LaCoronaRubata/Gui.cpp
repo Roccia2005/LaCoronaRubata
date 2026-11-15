@@ -6,6 +6,7 @@
 
 #include "Gui.h"
 
+/// Crea il contesto ImGui e inizializza i backend GLFW e OpenGL 3.3 per la finestra ricevuta.
 void Gui::initialize(GLFWwindow* window)
 {
     IMGUI_CHECKVERSION();
@@ -16,6 +17,8 @@ void Gui::initialize(GLFWwindow* window)
     ImGui_ImplOpenGL3_Init("#version 330 core");
 }
 
+/// Avvia un frame ImGui dopo avere aggiornato i due backend. Chiamare prima di costruire i
+/// widget.
 void Gui::beginFrame()
 {
     ImGui_ImplOpenGL3_NewFrame();
@@ -23,6 +26,8 @@ void Gui::beginFrame()
     ImGui::NewFrame();
 }
 
+/// Costruisce il pannello Controlli. I widget aggiornano il colore di sfondo e la preferenza
+/// wireframe della GUI.
 void Gui::draw()
 {
     ImGui::Begin("Controlli");
@@ -44,12 +49,14 @@ void Gui::draw()
     ImGui::End();
 }
 
+/// Conclude il frame ImGui e invia a OpenGL i comandi di disegno dei widget.
 void Gui::render()
 {
     ImGui::Render();
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 }
 
+/// Disattiva i backend e distrugge il contesto ImGui prima della chiusura della finestra.
 void Gui::shutdown()
 {
     ImGui_ImplOpenGL3_Shutdown();
