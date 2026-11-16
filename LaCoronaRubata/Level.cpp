@@ -1,20 +1,12 @@
 #include "Level.h"
-#include "PlayerPhysics.h"
+#include "Simulazione/Components/PlayerPhysics.h"
 #include <algorithm>
 #include <cmath>
+#include <stdexcept>
 
 using namespace GameConfig;
 
 namespace {
-
-    Obstacle makePlateObstacle(const Pressable& plate)
-    {
-        const float height = plate.surfaceY() - plate.basePosition.y;
-        return {
-            plate.basePosition + glm::vec2{0.0f, height * 0.5f},
-            {plate.width, height}
-        };
-    }
 
     bool isSupportedBy(const AABB& body, const AABB& solid)
     {
@@ -28,12 +20,50 @@ namespace {
 
         return overlapsX && std::abs(feetY - topY) <= contactTolerance;
     }
+
+    /// Verifica se il rettangolo della parete attraversa un corpo durante il
+    /// movimento. Il semplice contatto sui bordi non blocca la corsa.
+    bool wallPathIntersects(const SolidCollider& wall, const glm::vec2& nextPosition,
+                            const AABB& body)
+    {
+        const glm::vec2 delta = nextPosition - wall.position;
+        if (delta == glm::vec2(0.0f)) {
+            return false;
+        }
+
+        // Allargare il corpo di mezzo collider consente di seguire solo il centro
+        // della parete. I valori tra 0 e 1 rappresentano le frazioni della corsa del frame.
+        const glm::vec2 halfSize = body.halfSize + wall.size * 0.5f;
+        const glm::vec2 offset = wall.position - body.center;
+        float enter = 0.0f;
+        float leave = 1.0f;
+
+        for (glm::length_t axis = 0; axis < 2; ++axis) {
+            if (delta[axis] == 0.0f) {
+                if (std::abs(offset[axis]) >= halfSize[axis]) {
+                    return false;
+                }
+                continue;
+            }
+
+            // Interseca gli intervalli di sovrapposizione sui due assi.
+            const float first = (-halfSize[axis] - offset[axis]) / delta[axis];
+            const float last = (halfSize[axis] - offset[axis]) / delta[axis];
+            enter = std::max(enter, std::min(first, last));
+            leave = std::min(leave, std::max(first, last));
+            if (enter >= leave) {
+                return false;
+            }
+        }
+        return true;
+    }
 }
 
 /// Costruisce lo stato iniziale della stanza a partire dalla mappa. Imposta confini, spawn, area
-/// di uscita, ostacoli e cristalli.
+/// di uscita, piattaforme, cristalli, pedane, pareti mobili, fantasmi e casse.
 Level::Level(const LevelDefinition& definition)
-    : m_roomHalfSize(definition.roomHalfSize), m_floorY(definition.floorY)
+    : m_roomHalfSize(definition.roomHalfSize), m_floorY(definition.floorY),
+      m_exitDoor(definition.doorBase)
 {
     for (std::size_t i = 0; i < m_players.size(); ++i) {
         Player& player = m_players[i];
@@ -41,108 +71,177 @@ Level::Level(const LevelDefinition& definition)
         player.reset();
     }
 
-    constexpr glm::vec2 doorSize{DOOR_WIDTH, DOOR_HEIGHT};
-    const glm::vec2 doorCenter = definition.doorBase + glm::vec2(0.0f, doorSize.y * 0.5f);
-    m_exitArea = makeAABB(doorCenter, doorSize);
-
     for (const auto& platform : definition.platforms) {
         const glm::vec2 center = platform.basePosition + glm::vec2(0.0f, platform.size.y * 0.5f);
-        m_obstacles.push_back({center, platform.size});
+        m_platforms.push_back({center, platform.size});
     }
     for (const auto& position : definition.crystals) {
         m_coins.push_back({position});
     }
     for (const auto& plate : definition.pressurePlates) {
-        m_pressurePlates.push_back({
-            plate.basePosition, plate.width, plate.height, plate.pressDistance
+        m_pressurePlates.emplace_back(plate);
+    }
+
+    // Valida i collegamenti una volta sola, dopo aver caricato tutte le pedane.
+    for (const auto& wall : definition.movingWalls) {
+        const bool invalidLink = std::any_of(
+            wall.pressurePlateIndices.begin(), wall.pressurePlateIndices.end(),
+            [&](std::size_t index) { return index >= m_pressurePlates.size(); });
+        if (invalidLink) {
+            throw std::out_of_range("Indice pedana non valido per la parete mobile");
+        }
+
+        m_movingWalls.push_back({
+            MovingWall(wall.closedCenter, wall.openCenter, wall.size, wall.travelSeconds),
+            wall.pressurePlateIndices
         });
+    }
+    for (const GhostDefinition& ghost : definition.ghosts) {
+        m_ghosts.emplace_back(ghost);
+    }
+    for (const CrateDefinition& crate : definition.crates) {
+        m_crates.emplace_back(crate);
     }
 }
 
-/// Avanza la fisica dei giocatori di dt secondi, poi aggiorna la porta e verifica la raccolta.
+/// Avanza la fisica dei giocatori e delle casse, poi aggiorna la stanza.
+/// Il contatto con un fantasma o con una parete in chiusura resetta la stanza.
 /// currentTime e' il tempo in secondi usato per calcolare l'oscillazione dei cristalli.
 void Level::update(float dt, const PlayerInput& input1, const PlayerInput& input2,
                    float currentTime)
 {
-    auto solids = m_obstacles;
-    solids.reserve(solids.size() + m_pressurePlates.size());
-    appendPressurePlateObstacles(solids);
+    auto solids = m_platforms;
+    solids.reserve(solids.size() + m_pressurePlates.size() + m_movingWalls.size() + m_crates.size());
+    for (const PressurePlate& plate : m_pressurePlates) {
+        solids.push_back(plate.collider());
+    }
+    // I giocatori incontrano le pareti nella posizione di inizio frame.
+    for (const LinkedMovingWall& link : m_movingWalls) {
+        solids.push_back(link.wall.collider());
+    }
 
     PlayerPhysics::updatePlayers(m_players[0], m_players[1], input1, input2,
-        dt, m_roomHalfSize.x, m_floorY, solids);
-    updateDoor(dt);
+        dt, m_roomHalfSize.x, m_floorY, solids, m_crates);
+    m_exitDoor.update(dt, isPlayerAtExit(m_players[0]) || isPlayerAtExit(m_players[1]));
     updatePressurePlates();
+    if (updateMovingWalls(dt) || updateGhosts(dt)) {
+        reset();
+        return;
+    }
     collectCoins(currentTime);
 }
 
 /// Restituisce true quando il rettangolo del giocatore si sovrappone all'area di uscita.
-bool Level::isAtDoor(const Player& player) const
+bool Level::isPlayerAtExit(const Player& player) const
 {
-    return PlayerPhysics::intersects(makeAABB(player.position, player.size), m_exitArea);
+    return m_exitDoor.overlaps(player.bounds());
 }
 
-/// Fa avanzare l'apertura se almeno un giocatore occupa l'uscita, altrimenti la fa diminuire. Il
-/// valore resta fra 0 e 1 e una transizione completa dura 0.35 secondi.
-void Level::updateDoor(float dt)
-{
-    const bool shouldOpen = isAtDoor(m_players[0]) || isAtDoor(m_players[1]);
-    const float step = dt / DOOR_OPENING_SECONDS;
-    m_doorOpening = std::clamp(m_doorOpening + (shouldOpen ? step : -step), 0.0f, 1.0f);
-}
-
+/// Per ogni pedana rileva giocatori e casse appoggiati e controlla lo spazio per la risalita.
+/// Applica agli oggetti appoggiati lo spostamento verticale restituito dalla pedana.
 void Level::updatePressurePlates()
 {
-    for (Pressable& plate : m_pressurePlates) {
-        const Obstacle solid = makePlateObstacle(plate);
+    for (PressurePlate& plate : m_pressurePlates) {
+        const SolidCollider solid = plate.collider();
         const AABB plateBox = makeAABB(solid.position, solid.size);
 
         std::array<bool, 2> supported{};
         for (std::size_t i = 0; i < m_players.size(); ++i) {
             const Player& player = m_players[i];
             supported[i] = player.onGround && player.velocity.y <= 0.0f
-                && isSupportedBy(makeAABB(player.position, player.size), plateBox);
+                && isSupportedBy(player.bounds(), plateBox);
         }
 
-        const bool shouldPress = supported[0] || supported[1];
-        if (shouldPress == plate.pressed) {
-            continue;
-        }
-
-        if (!shouldPress) {
+        const auto crateOnPlate = [&](const Crate& crate) {
+            return isSupportedBy(crate.bounds(), plateBox);
+        };
+        const bool hasSupport = supported[0] || supported[1]
+            || std::any_of(m_crates.begin(), m_crates.end(), crateOnPlate);
+        bool releaseBlocked = false;
+        if (plate.isPressed() && !hasSupport) {
             // Prima di risalire, verifica che ci sia spazio.
-            Pressable released = plate;
-            released.pressed = false;
-            const Obstacle raised = makePlateObstacle(released);
+            const SolidCollider raised = plate.releasedCollider();
             const AABB raisedBox = makeAABB(raised.position, raised.size);
 
-            const bool blocked = std::any_of(
+            releaseBlocked = std::any_of(
                 m_players.begin(), m_players.end(), [&](const Player& player) {
-                    return PlayerPhysics::intersects(
-                        makeAABB(player.position, player.size), raisedBox);
+                    return PlayerPhysics::intersects(player.bounds(), raisedBox);
+                }) || std::any_of(m_crates.begin(), m_crates.end(), [&](const Crate& crate) {
+                    return PlayerPhysics::intersects(crate.bounds(), raisedBox);
                 });
-
-            if (blocked) {
-                continue;
-            }
         }
 
-        const float previousSurfaceY = plate.surfaceY();
-        plate.pressed = shouldPress;
-        const float deltaY = plate.surfaceY() - previousSurfaceY;
+        const float deltaY = plate.update(hasSupport, releaseBlocked);
+        if (deltaY == 0.0f) {
+            continue;
+        }
 
         for (std::size_t i = 0; i < m_players.size(); ++i) {
             if (supported[i]) {
                 m_players[i].position.y += deltaY;
             }
         }
+        for (Crate& crate : m_crates) {
+            if (crateOnPlate(crate)) {
+                crate.moveWithSupport(deltaY);
+            }
+        }
     }
+}
+
+/// Legge lo stato appena aggiornato delle pedane. Basta una pedana premuta per aprire la parete.
+/// La parete si ferma contro una cassa. Se colpisce un giocatore in chiusura, segnala il reset.
+bool Level::updateMovingWalls(float dt)
+{
+    for (LinkedMovingWall& link : m_movingWalls) {
+        const bool activated = std::any_of(
+            link.pressurePlateIndices.begin(), link.pressurePlateIndices.end(),
+            [&](std::size_t index) { return m_pressurePlates[index].isPressed(); });
+
+        // Simula il passo su una copia prima di cambiare la posizione effettiva.
+        MovingWall next = link.wall;
+        next.update(dt, activated);
+
+        const SolidCollider current = link.wall.collider();
+        const glm::vec2 nextPosition = next.position();
+        const bool blocked = std::any_of(
+            m_players.begin(), m_players.end(), [&](const Player& player) {
+                return wallPathIntersects(current, nextPosition, player.bounds());
+            });
+        if (blocked && !activated) {
+            return true;
+        }
+        if (!blocked && std::none_of(m_crates.begin(), m_crates.end(), [&](const Crate& crate) {
+                return wallPathIntersects(current, nextPosition, crate.bounds());
+            })) {
+            link.wall = next;
+        }
+    }
+    return false;
+}
+
+/// Fa avanzare la pattuglia e segnala il contatto con uno dei due giocatori.
+bool Level::updateGhosts(float dt)
+{
+    for (Ghost& ghost : m_ghosts) {
+        ghost.update(dt);
+        const AABB ghostBounds = ghost.bounds();
+        const bool touchesPlayer = std::any_of(
+            m_players.begin(), m_players.end(), [&](const Player& player) {
+                return PlayerPhysics::intersects(player.bounds(), ghostBounds);
+            });
+        if (touchesPlayer) {
+            return true;
+        }
+    }
+    return false;
 }
 
 /// Controlla il contatto del primo giocatore con i cristalli ancora disponibili, alla loro
 /// posizione oscillante. Ogni nuova raccolta assegna 10 punti.
 void Level::collectCoins(float currentTime)
 {
-    const AABB playerBox{m_players[0].position, m_players[0].size * 0.5f};
+    const AABB playerBox = m_players[0].bounds();
     for (std::size_t i = 0; i < m_coins.size(); ++i) {
         Collectible& coin = m_coins[i];
         if (coin.collected) continue;
@@ -163,26 +262,30 @@ void Level::collectCoins(float currentTime)
 /// nell'area di uscita.
 bool Level::isFinished() const
 {
-    return m_doorOpening >= 1.0f && isAtDoor(m_players[0]) && isAtDoor(m_players[1]);
+    return m_exitDoor.isOpen() && isPlayerAtExit(m_players[0]) && isPlayerAtExit(m_players[1]);
 }
 
-/// Riporta i giocatori agli spawn, chiude la porta, azzera il punteggio e rende di nuovo
-/// raccoglibili i cristalli.
+/// Ripristina giocatori, porta, pedane, pareti, fantasmi, casse, punteggio e cristalli.
 void Level::reset()
 {
-    m_doorOpening = 0.0f;
+    m_exitDoor.reset();
     for (Player& player : m_players) {
         player.reset();
+    }
+    for (PressurePlate& plate : m_pressurePlates) {
+        plate.reset();
+    }
+    for (LinkedMovingWall& link : m_movingWalls) {
+        link.wall.reset();
+    }
+    for (Ghost& ghost : m_ghosts) {
+        ghost.reset();
+    }
+    for (Crate& crate : m_crates) {
+        crate.reset();
     }
     m_score = 0;
     for (Collectible& coin : m_coins) {
         coin.collected = false;
-    }
-}
-
-void Level::appendPressurePlateObstacles(std::vector<Obstacle>& solids) const
-{
-    for (const Pressable& plate : m_pressurePlates) {
-        solids.push_back(makePlateObstacle(plate));
     }
 }

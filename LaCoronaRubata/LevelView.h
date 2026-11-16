@@ -3,10 +3,11 @@
 #include <array>
 #include <vector>
 
+class ExitDoor;
 class Level;
+class PressurePlate;
 struct AABB;
-struct Obstacle;
-struct Pressable;
+struct SolidCollider;
 
 class LevelView {
 public:
@@ -20,10 +21,11 @@ private:
         std::size_t released;
     };
     struct LevelGeometries {
-        std::size_t floor;
-        std::size_t platform;
-        std::size_t grass;
+        std::size_t solidRectangle;
+        std::size_t movingWall;
         std::size_t crystal;
+        std::size_t ghost;
+        std::size_t crate;
         std::array<std::size_t, 2> players;
         std::size_t doorRecess;
         std::array<std::size_t, 2> doorLeaves;
@@ -39,12 +41,18 @@ private:
     std::array<std::size_t, 2> m_playerInstances{};
     std::array<std::size_t, 2> m_doorLeaves{};
     std::vector<PressurePlateInstances> m_pressurePlates;
+    // Indici delle istanze grafiche, nello stesso ordine delle pareti mobili in Level.
+    std::vector<std::size_t> m_movingWallInstances;
+    // Indici delle istanze dei fantasmi, nello stesso ordine di Level::ghosts().
+    std::vector<std::size_t> m_ghostInstances;
+    // Indici delle istanze delle casse, nello stesso ordine di Level::crates().
+    std::vector<std::size_t> m_crateInstances;
     std::vector<std::size_t> m_coinInstances;
 
     LevelGeometries loadGeometries();
     void rebuildInstances(const Level& level);
     void createDoor(const AABB& exitArea);
-    void createPlatform(const Obstacle& obstacle);
-    void createPressurePlate(const Pressable& plate);
-    void updateDoorLeaves(const Level& level);
+    void createPlatform(const SolidCollider& platform);
+    void createPressurePlate(const PressurePlate& plate);
+    void updateDoorLeaves(const ExitDoor& door);
 };

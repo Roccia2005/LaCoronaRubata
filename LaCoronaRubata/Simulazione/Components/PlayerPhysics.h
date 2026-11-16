@@ -2,11 +2,14 @@
 #include "LevelTypes.h"
 #include <vector>
 
+struct Player;
+class Crate;
+
 namespace PlayerPhysics {
 bool intersects(const AABB& a, const AABB& b);
 
 void updatePlayers(Player& first, Player& second,
                    const PlayerInput& input1, const PlayerInput& input2,
                    float dt, float roomHalfWidth, float floorY,
-                   const std::vector<Obstacle>& obstacles);
+                   std::vector<SolidCollider>& solids, std::vector<Crate>& crates);
 }

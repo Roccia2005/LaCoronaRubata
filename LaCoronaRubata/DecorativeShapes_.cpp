@@ -43,26 +43,4 @@ MeshData crystal(float r) {
     triangle(m,{-.28f*r,.25f*r},{-.17f*r,.50f*r},{-.05f*r,.32f*r},{.85f,1.f,1.f});
     return m;
 }
-/// Genera un blocco unitario con triangoli colorati che suggeriscono le sfaccettature della
-/// roccia.
-MeshData platformRock() {
-    MeshData m;
-    // Rettangolo unitario, che mantiene la AABB fisica invariata.
-    rect(m,-.5f,-.5f,.5f,.5f,{.37f,.40f,.47f});
-    triangle(m,{-.5f,-.5f},{-.12f,-.5f},{-.3f,.22f},{.28f,.34f,.43f});
-    triangle(m,{.12f,-.5f},{.5f,-.5f},{.32f,.24f},{.30f,.35f,.43f});
-    triangle(m,{-.35f,.1f},{.0f,-.13f},{.20f,.16f},{.46f,.49f,.53f});
-    return m;
-}
-/// Genera una fascia d'erba con due strati di colore e una fila di ciuffi triangolari.
-MeshData grassStrip() {
-    MeshData m;
-    rect(m,-.5f,-.5f,.5f,.30f,{.19f,.65f,.32f});
-    rect(m,-.5f,-.5f,.5f,-.15f,{.11f,.47f,.23f});
-    for(int i=0;i<9;++i) {
-        float x=-.46f+i*.115f;
-        triangle(m,{x,.25f},{x+.035f,.53f},{x+.075f,.25f},{.35f,.80f,.36f});
-    }
-    return m;
-}
 }

@@ -10,6 +10,9 @@
     <Filter Include="Source Files\Simulazione">
       <UniqueIdentifier>{BF7D3AB8-6F37-431A-A46E-D56E25CF6AF1}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\Simulazione\Components">
+      <UniqueIdentifier>{72FC4FDC-0960-4D44-A524-549A084FB429}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Source Files\Rendering">
       <UniqueIdentifier>{3CE70946-1293-4142-9062-9A53E13E5F5C}</UniqueIdentifier>
     </Filter>
@@ -21,6 +24,9 @@
     </Filter>
     <Filter Include="Header Files\Simulazione">
       <UniqueIdentifier>{32BDCF81-CB0D-433F-B8FC-F640F47FCC33}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\Simulazione\Components">
+      <UniqueIdentifier>{32C19335-80F8-4391-AD99-F916845276E2}</UniqueIdentifier>
     </Filter>
     <Filter Include="Header Files\Rendering">
       <UniqueIdentifier>{1350EF78-0C51-4BDE-AD69-A33D2739AD38}</UniqueIdentifier>
@@ -111,11 +117,20 @@
     <ClCompile Include="CoinRenderer.cpp">
       <Filter>Source Files\Rendering</Filter>
     </ClCompile>
+    <ClCompile Include="Simulazione\Components\Crate.cpp">
+      <Filter>Source Files\Simulazione\Components</Filter>
+    </ClCompile>
     <ClCompile Include="DecorativeShapes.cpp">
       <Filter>Source Files\Forme</Filter>
     </ClCompile>
+    <ClCompile Include="Simulazione\Components\ExitDoor.cpp">
+      <Filter>Source Files\Simulazione\Components</Filter>
+    </ClCompile>
     <ClCompile Include="Game.cpp">
       <Filter>Source Files\Simulazione</Filter>
+    </ClCompile>
+    <ClCompile Include="Simulazione\Components\Ghost.cpp">
+      <Filter>Source Files\Simulazione\Components</Filter>
     </ClCompile>
     <ClCompile Include="Level.cpp">
       <Filter>Source Files\Simulazione</Filter>
@@ -123,14 +138,20 @@
     <ClCompile Include="LevelCatalog.cpp">
       <Filter>Source Files\Simulazione</Filter>
     </ClCompile>
-    <ClCompile Include="LevelMaps.cpp">
-      <Filter>Source Files\Simulazione</Filter>
-    </ClCompile>
     <ClCompile Include="LevelView.cpp">
       <Filter>Source Files\Rendering</Filter>
     </ClCompile>
-    <ClCompile Include="PlayerPhysics.cpp">
-      <Filter>Source Files\Simulazione</Filter>
+    <ClCompile Include="Simulazione\Components\MovingWall.cpp">
+      <Filter>Source Files\Simulazione\Components</Filter>
+    </ClCompile>
+    <ClCompile Include="Simulazione\Components\Player.cpp">
+      <Filter>Source Files\Simulazione\Components</Filter>
+    </ClCompile>
+    <ClCompile Include="Simulazione\Components\PlayerPhysics.cpp">
+      <Filter>Source Files\Simulazione\Components</Filter>
+    </ClCompile>
+    <ClCompile Include="Simulazione\Components\PressurePlate.cpp">
+      <Filter>Source Files\Simulazione\Components</Filter>
     </ClCompile>
     <ClCompile Include="Landscape.cpp">
       <Filter>Source Files\Rendering</Filter>
@@ -209,11 +230,20 @@
     <ClInclude Include="CoinRenderer.h">
       <Filter>Header Files\Rendering</Filter>
     </ClInclude>
+    <ClInclude Include="Simulazione\Components\Crate.h">
+      <Filter>Header Files\Simulazione\Components</Filter>
+    </ClInclude>
     <ClInclude Include="DecorativeShapes.h">
       <Filter>Header Files\Forme</Filter>
     </ClInclude>
+    <ClInclude Include="Simulazione\Components\ExitDoor.h">
+      <Filter>Header Files\Simulazione\Components</Filter>
+    </ClInclude>
     <ClInclude Include="Game.h">
       <Filter>Header Files\Simulazione</Filter>
+    </ClInclude>
+    <ClInclude Include="Simulazione\Components\Ghost.h">
+      <Filter>Header Files\Simulazione\Components</Filter>
     </ClInclude>
     <ClInclude Include="Level.h">
       <Filter>Header Files\Simulazione</Filter>
@@ -227,17 +257,23 @@
     <ClInclude Include="LevelCatalog.h">
       <Filter>Header Files\Simulazione</Filter>
     </ClInclude>
-    <ClInclude Include="LevelMaps.h">
-      <Filter>Header Files\Simulazione</Filter>
-    </ClInclude>
     <ClInclude Include="Config.h">
       <Filter>Header Files\Simulazione</Filter>
     </ClInclude>
     <ClInclude Include="LevelTypes.h">
       <Filter>Header Files\Simulazione</Filter>
     </ClInclude>
-    <ClInclude Include="PlayerPhysics.h">
-      <Filter>Header Files\Simulazione</Filter>
+    <ClInclude Include="Simulazione\Components\MovingWall.h">
+      <Filter>Header Files\Simulazione\Components</Filter>
+    </ClInclude>
+    <ClInclude Include="Simulazione\Components\Player.h">
+      <Filter>Header Files\Simulazione\Components</Filter>
+    </ClInclude>
+    <ClInclude Include="Simulazione\Components\PlayerPhysics.h">
+      <Filter>Header Files\Simulazione\Components</Filter>
+    </ClInclude>
+    <ClInclude Include="Simulazione\Components\PressurePlate.h">
+      <Filter>Header Files\Simulazione\Components</Filter>
     </ClInclude>
     <ClInclude Include="Landscape.h">
       <Filter>Header Files\Rendering</Filter>

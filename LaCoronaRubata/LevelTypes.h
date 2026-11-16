@@ -9,22 +9,8 @@ inline AABB makeAABB(const glm::vec2& center, const glm::vec2& size)
 {
     return { center, size * 0.5f };
 }
-struct Player {
-    glm::vec2 size{GameConfig::PLAYER_WIDTH, GameConfig::PLAYER_HEIGHT};
-    glm::vec2 spawnPosition{0.0f};
-    glm::vec2 position{0.0f};
-    glm::vec2 velocity{0.0f};
-    bool onGround = true;
-
-    void reset()
-    {
-        position = spawnPosition;
-        velocity = {0.0f, 0.0f};
-        onGround = true;
-        size.y = GameConfig::PLAYER_HEIGHT;
-    }
-};
-struct Obstacle {
+// Rettangolo solido con posizione al centro e dimensioni complete.
+struct SolidCollider {
     glm::vec2 position{0.0f};
     glm::vec2 size{0.0f};
 };
@@ -37,16 +23,4 @@ struct PlayerInput {
     bool right = false;
     bool jumpHeld = false;
     bool down = false;
-};
-struct Pressable {
-    glm::vec2 basePosition;
-    float width;
-    float height;
-    float pressDistance;
-    bool pressed = false;
-    float surfaceY() const
-    {
-        return basePosition.y + height
-            - (pressed ? pressDistance : 0.0f);
-    }
 };

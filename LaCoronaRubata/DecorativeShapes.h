@@ -7,12 +7,11 @@ namespace DecorativeShapes {
 MeshData man();
 MeshData women();
 MeshData crystal(float radius);
-MeshData platformRock();
-MeshData grassStrip();
 MeshData crate();
 MeshData goblin();
 MeshData ghost();
 MeshData wall();
+MeshData movingWall();
 MeshData bridge();
 struct DoorMeshes {
     MeshData recess;

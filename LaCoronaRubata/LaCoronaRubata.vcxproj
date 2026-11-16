@@ -79,13 +79,18 @@
   <ItemGroup>
     <ClCompile Include="BackgroundRenderer.cpp" />
     <ClCompile Include="CoinRenderer.cpp" />
+    <ClCompile Include="Simulazione\Components\Crate.cpp" />
     <ClCompile Include="DecorativeShapes.cpp" />
+    <ClCompile Include="Simulazione\Components\ExitDoor.cpp" />
     <ClCompile Include="Game.cpp" />
+    <ClCompile Include="Simulazione\Components\Ghost.cpp" />
     <ClCompile Include="Level.cpp" />
     <ClCompile Include="LevelCatalog.cpp" />
-    <ClCompile Include="LevelMaps.cpp" />
     <ClCompile Include="LevelView.cpp" />
-    <ClCompile Include="PlayerPhysics.cpp" />
+    <ClCompile Include="Simulazione\Components\MovingWall.cpp" />
+    <ClCompile Include="Simulazione\Components\Player.cpp" />
+    <ClCompile Include="Simulazione\Components\PlayerPhysics.cpp" />
+    <ClCompile Include="Simulazione\Components\PressurePlate.cpp" />
     <ClCompile Include="Landscape.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="ShapeGenerator.cpp" />
@@ -108,16 +113,21 @@
   <ItemGroup>
     <ClInclude Include="BackgroundRenderer.h" />
     <ClInclude Include="CoinRenderer.h" />
+    <ClInclude Include="Simulazione\Components\Crate.h" />
     <ClInclude Include="DecorativeShapes.h" />
+    <ClInclude Include="Simulazione\Components\ExitDoor.h" />
     <ClInclude Include="Game.h" />
+    <ClInclude Include="Simulazione\Components\Ghost.h" />
     <ClInclude Include="Level.h" />
     <ClInclude Include="LevelView.h" />
     <ClInclude Include="LevelDefinition.h" />
     <ClInclude Include="LevelCatalog.h" />
-    <ClInclude Include="LevelMaps.h" />
     <ClInclude Include="Config.h" />
     <ClInclude Include="LevelTypes.h" />
-    <ClInclude Include="PlayerPhysics.h" />
+    <ClInclude Include="Simulazione\Components\MovingWall.h" />
+    <ClInclude Include="Simulazione\Components\Player.h" />
+    <ClInclude Include="Simulazione\Components\PlayerPhysics.h" />
+    <ClInclude Include="Simulazione\Components\PressurePlate.h" />
     <ClInclude Include="Landscape.h" />
     <ClInclude Include="MeshData.h" />
     <ClInclude Include="ShapeGenerator.h" />
