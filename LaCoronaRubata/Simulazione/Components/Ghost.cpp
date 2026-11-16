@@ -4,7 +4,7 @@
 
 Ghost::Ghost(const GhostDefinition& definition)
     : m_startCenter(definition.startCenter),
-      m_patrolEndX(definition.patrolEndX),
+      m_patrolEndCenter(definition.patrolEndCenter),
       m_size(definition.size),
       m_speed(definition.speed)
 {
@@ -12,7 +12,7 @@ Ghost::Ghost(const GhostDefinition& definition)
 
 void Ghost::update(float dt)
 {
-    const double patrolLength = std::abs(static_cast<double>(m_patrolEndX) - m_startCenter.x);
+    const double patrolLength = glm::length(glm::dvec2(m_patrolEndCenter) - glm::dvec2(m_startCenter));
     if (dt <= 0.0f || patrolLength == 0.0 || m_speed <= 0.0f) {
         return;
     }
@@ -25,8 +25,7 @@ void Ghost::update(float dt)
 AABB Ghost::bounds() const
 {
     const float progress = static_cast<float>(1.0 - std::abs(1.0 - m_patrolPhase));
-    const float x = glm::mix(m_startCenter.x, m_patrolEndX, progress);
-    return makeAABB({x, m_startCenter.y}, m_size);
+    return makeAABB(glm::mix(m_startCenter, m_patrolEndCenter, progress), m_size);
 }
 
 void Ghost::reset()

@@ -1,18 +1,21 @@
 // Platformer 2D - main minimale: GLFW/GLAD, input, update e rendering.
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
+#include "Config.h"
 #include "LevelView.h"
 #include "Shader.h"
 #include "Renderer.h"
 #include "BackgroundRenderer.h"
 #include "CoinRenderer.h"
-#include "Game.h"
+#include "GameFlow.h"
+#include "Gui.h"
 #include <algorithm>
 #include <fstream>
 #include <iostream>
 #include <optional>
 #include <sstream>
 #include <string>
+#include <utility>
 
 /// Legge il file di testo usato come sorgente GLSL. Se l'apertura fallisce, scrive il percorso
 /// su stderr e restituisce una stringa vuota.
@@ -83,34 +86,39 @@ std::optional<ShaderSources> loadShaderSources()
     return sources;
 }
 
-/// Sincronizza la vista con la simulazione, disegna la stanza e presenta il frame.
-/// Se il framebuffer non ha area, salta il disegno.
-void renderFrame(GLFWwindow* window, const Game& game, LevelView& levelView,
+/// Disegna fondale e stanza prima dei pannelli dell'interfaccia.
+void renderWorld(int width, int height, const GameFlow& flow, LevelView& levelView,
                  Renderer& renderer, const BackgroundRenderer& background,
                  const CoinRenderer& coinRenderer, float timeSeconds)
 {
-    int width = 0, height = 0;
-    glfwGetFramebufferSize(window, &width, &height);
-    if (width <= 0 || height <= 0) return;
-
-    const Level& level = game.level();
-    levelView.sync(level, game.levelNumber());
-    renderer.setRoomViewport(width, height, level.roomHalfSize());
-
-    const std::string title = "La Corona Rubata | Livello " +
-        std::to_string(game.levelNumber()) + " | Cristalli: " +
-        std::to_string(game.score()) +
-        (game.finished() ? " | Fine della prova - R reset" :
-                           " | W / Freccia su: salto - R reset");
-    glfwSetWindowTitle(window, title.c_str());
+    const Level* level = flow.levelToDraw();
+    if (level) {
+        levelView.sync(*level, flow.levelNumber());
+        renderer.setRoomViewport(width, height, level->roomHalfSize());
+    } else {
+        glViewport(0, 0, width, height);
+    }
 
     glClearColor(0.06f, 0.11f, 0.20f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
-    // Ordine: prima il fondale, poi gli oggetti del mondo.
     background.draw(timeSeconds);
-    renderer.drawScene(levelView.scene());
-    coinRenderer.draw(levelView.scene(), renderer.projectionMatrix(), timeSeconds);
-    glfwSwapBuffers(window);
+    if (level) {
+        renderer.drawScene(levelView.scene());
+        coinRenderer.draw(levelView.scene(), renderer.projectionMatrix(), flow.worldTime());
+    }
+}
+
+/// Mostra nel titolo il livello e il punteggio durante la campagna.
+void updateWindowTitle(GLFWwindow* window, const GameFlow& flow)
+{
+    std::string title = GameConfig::GAME_TITLE;
+    if (flow.screen() == Screen::Story) {
+        title += " | Livello " + std::to_string(flow.levelNumber()) + " | Cristalli: "
+              + std::to_string(flow.levelToDraw()->score()) + " | R reset";
+    } else if (flow.screen() == Screen::Tutorial) {
+        title += " | Tutorial";
+    }
+    glfwSetWindowTitle(window, title.c_str());
 }
 
 } // namespace
@@ -129,7 +137,7 @@ int main()
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
     GLFWwindow* window = glfwCreateWindow(
-        1100, 700, "La Corona Rubata", nullptr, nullptr);
+        1100, 700, GameConfig::GAME_TITLE, nullptr, nullptr);
     if (!window) {
         glfwTerminate();
         return 1;
@@ -165,17 +173,19 @@ int main()
         //Shader e render separato per le monete
         Shader coinShader(shaderSources->coinVertex, shaderSources->basicFragment);
         CoinRenderer coinRenderer(coinShader);
-        Game game;
+        GameFlow flow;
         LevelView levelView;
+        Gui gui;
+        gui.initialize(window);
 
         bool previousReset = false;
+        bool previousEscape = false;
+        UiAction pendingAction = UiAction::None;
         double previousTime = glfwGetTime();
 
         // 4. Game loop: tempo, input, simulazione, rendering.
         while (!glfwWindowShouldClose(window)) {
             glfwPollEvents();
-            if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
-                glfwSetWindowShouldClose(window, GLFW_TRUE);
 
             const double now = glfwGetTime();
             // dt e' il tempo dall'ultimo frame, in secondi. Lo limitiamo con Config.h
@@ -185,19 +195,51 @@ int main()
                 static_cast<float>(now - previousTime), 0.0f, GameConfig::MAX_FRAME_DELTA_SECONDS);
             previousTime = now;
 
-            const auto input1 = readPlayerInput(window, firstPlayerKeys);
-            const auto input2 = readPlayerInput(window, secondPlayerKeys);
-
+            const Screen screen = flow.screen();
+            const bool playing = screen == Screen::Story || screen == Screen::Tutorial;
+            const bool escape = glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS;
             const bool restart = glfwGetKey(window, GLFW_KEY_R) == GLFW_PRESS;
 
-            // Rileva il passaggio da tasto rilasciato a premuto.
-            if (restart && !previousReset) game.reset();
+            // Applica al massimo un'azione per frame. I pulsanti vengono letti dopo il disegno.
+            UiAction action = std::exchange(pendingAction, UiAction::None);
+            if (escape && !previousEscape) {
+                if (screen == Screen::Tutorial) {
+                    action = UiAction::BackToMenu;
+                } else {
+                    glfwSetWindowShouldClose(window, GLFW_TRUE);
+                    break;
+                }
+            } else if (playing && restart && !previousReset) {
+                action = UiAction::RestartRoom;
+            }
+            previousEscape = escape;
             previousReset = restart;
-            game.update(dt, input1, input2, static_cast<float>(now));
 
-            renderFrame(window, game, levelView, renderer, background, coinRenderer,
+            const PlayerInput input1 = playing ? readPlayerInput(window, firstPlayerKeys) : PlayerInput{};
+            const PlayerInput input2 = playing ? readPlayerInput(window, secondPlayerKeys) : PlayerInput{};
+            flow.update(dt, static_cast<float>(now), input1, input2, action);
+            updateWindowTitle(window, flow);
+
+            int width = 0, height = 0;
+            glfwGetFramebufferSize(window, &width, &height);
+            if (width <= 0 || height <= 0) {
+                continue;
+            }
+
+            renderWorld(width, height, flow, levelView, renderer, background, coinRenderer,
                         static_cast<float>(now));
+            gui.beginFrame();
+            if (flow.screen() == Screen::MainMenu) {
+                pendingAction = gui.drawMenu();
+            } else if (const DialogueLine* line = flow.dialogueLine()) {
+                pendingAction = gui.drawDialogue(*line);
+            } else if (flow.screen() == Screen::Tutorial) {
+                gui.drawTutorial();
+            }
+            gui.render();
+            glfwSwapBuffers(window);
         }
+        gui.shutdown();
     } // Distruzione automatica degli oggetti locali.
 
     glfwDestroyWindow(window);

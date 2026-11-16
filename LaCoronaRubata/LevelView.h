@@ -1,6 +1,7 @@
 #pragma once
 #include "Scene.h"
 #include <array>
+#include <optional>
 #include <vector>
 
 class ExitDoor;
@@ -37,7 +38,8 @@ private:
 
     Scene m_scene;
     LevelGeometries m_geometries;
-    std::size_t m_levelNumber = 0;
+    // Vuoto prima di caricare una stanza. Il numero 0 e' riservato al tutorial.
+    std::optional<std::size_t> m_loadedLevelNumber;
     std::array<std::size_t, 2> m_playerInstances{};
     std::array<std::size_t, 2> m_doorLeaves{};
     std::vector<PressurePlateInstances> m_pressurePlates;

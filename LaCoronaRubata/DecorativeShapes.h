@@ -4,8 +4,8 @@
 #include <array>
 namespace DecorativeShapes {
 // Tutti i vertici sono in coordinate locali.
-MeshData man();
-MeshData women();
+MeshData littlePrince();
+MeshData fox();
 MeshData crystal(float radius);
 MeshData crate();
 MeshData goblin();

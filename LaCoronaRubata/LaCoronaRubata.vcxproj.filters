@@ -129,6 +129,9 @@
     <ClCompile Include="Game.cpp">
       <Filter>Source Files\Simulazione</Filter>
     </ClCompile>
+    <ClCompile Include="GameFlow.cpp">
+      <Filter>Source Files\Simulazione</Filter>
+    </ClCompile>
     <ClCompile Include="Simulazione\Components\Ghost.cpp">
       <Filter>Source Files\Simulazione\Components</Filter>
     </ClCompile>
@@ -240,6 +243,9 @@
       <Filter>Header Files\Simulazione\Components</Filter>
     </ClInclude>
     <ClInclude Include="Game.h">
+      <Filter>Header Files\Simulazione</Filter>
+    </ClInclude>
+    <ClInclude Include="GameFlow.h">
       <Filter>Header Files\Simulazione</Filter>
     </ClInclude>
     <ClInclude Include="Simulazione\Components\Ghost.h">

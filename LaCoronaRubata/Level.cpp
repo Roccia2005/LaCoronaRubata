@@ -119,6 +119,10 @@ void Level::update(float dt, const PlayerInput& input1, const PlayerInput& input
     for (const LinkedMovingWall& link : m_movingWalls) {
         solids.push_back(link.wall.collider());
     }
+    // La fisica aggiorna i collider delle casse in coda, nello stesso ordine di m_crates.
+    for (const Crate& crate : m_crates) {
+        solids.push_back(crate.collider());
+    }
 
     PlayerPhysics::updatePlayers(m_players[0], m_players[1], input1, input2,
         dt, m_roomHalfSize.x, m_floorY, solids, m_crates);

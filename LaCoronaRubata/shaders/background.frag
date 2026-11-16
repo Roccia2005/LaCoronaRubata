@@ -3,93 +3,82 @@ in vec2 vUV;
 out vec4 FragColor;
 uniform float uTime;
 
-float hash(vec2 p)
+float hash(vec2 point)
 {
-    return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+    return fract(sin(dot(point, vec2(127.1, 311.7))) * 43758.5453);
 }
 
-float rectangle(vec2 p, vec2 halfSize)
+// Ogni cella puo' produrre una stella con posizione e fase proprie.
+float stars(vec2 position, float density, float threshold, float pixel)
 {
-    vec2 edge = abs(p) - halfSize;
-    return 1.0 - smoothstep(0.0, 0.002, max(edge.x, edge.y));
+    vec2 grid = position * density;
+    vec2 cell = floor(grid);
+    float seed = hash(cell);
+    vec2 offset = 0.22 + 0.56 * vec2(hash(cell + 17.0), hash(cell + 41.0));
+    float distanceToStar = length(fract(grid) - offset) / density;
+    float radius = mix(0.0009, 0.0024, hash(cell + 29.0));
+    float core = 1.0 - smoothstep(max(0.0, radius - pixel), radius + pixel, distanceToStar);
+    float halo = 1.0 - smoothstep(radius, 3.0 * radius, distanceToStar);
+    float twinkle = 0.78 + 0.22 * sin(uTime * 1.8 + seed * 83.0);
+    return step(threshold, seed) * twinkle * (0.78 * core + 0.22 * halo);
 }
 
-// Contorno con base piana, lati verticali e sommità arrotondata.
-float arch(vec2 p, float radius, float halfHeight)
+vec3 drawPlanet(vec3 sky, vec2 position, float pixel)
 {
-    vec2 edge = vec2(abs(p.x), max(p.y - halfHeight, 0.0));
-    return max(length(edge) - radius, -halfHeight - p.y);
-}
+    const float radius = 0.092;
+    vec2 point = position / radius;
+    float distanceToCenter = length(point);
+    float edge = pixel / radius;
+    float globe = 1.0 - smoothstep(1.0 - edge, 1.0 + edge, distanceToCenter);
 
-vec3 drawWindow(vec3 wall, vec2 p)
-{
-    float opening = arch(p, 0.073, 0.105);
-    float frame = arch(p, 0.091, 0.124);
-    vec3 stone = mix(vec3(0.11, 0.12, 0.16), vec3(0.30, 0.30, 0.34),
-                     smoothstep(-0.12, 0.17, p.y));
-    wall = mix(wall, stone, 1.0 - smoothstep(0.0, 0.003, frame));
+    vec2 ringSpace = mat2(0.94, 0.34, -0.34, 0.94) * point;
+    float ringRadius = length(ringSpace * vec2(1.0, 3.4));
+    float ring = smoothstep(1.24, 1.35, ringRadius) *
+                 (1.0 - smoothstep(1.90, 2.04, ringRadius));
+    ring *= 0.48 + 0.15 * sin(ringRadius * 34.0);
+    const vec3 ringColor = vec3(0.56, 0.55, 0.71);
 
-    vec3 glass = mix(vec3(0.095, 0.17, 0.25), vec3(0.15, 0.28, 0.39),
-                     smoothstep(-0.10, 0.17, p.y));
-    float bars = max(rectangle(p, vec2(0.004, 0.22)),
-                     rectangle(p - vec2(0.0, 0.035), vec2(0.09, 0.004)));
-    glass = mix(glass, vec3(0.055, 0.065, 0.09), bars);
-    wall = mix(wall, glass, 1.0 - smoothstep(0.0, 0.002, opening));
-    float sill = rectangle(p + vec2(0.0, 0.122), vec2(0.101, 0.012));
-    return mix(wall, vec3(0.29, 0.29, 0.33), sill);
-}
-
-vec3 drawTorch(vec3 wall, vec2 p, float phase)
-{
-    float sway = sin(phase * 6.0) * 0.004 + sin(phase * 11.0) * 0.002;
-    vec2 flame = (p - vec2(sway, 0.038)) / vec2(0.021, 0.041);
-    flame.x /= mix(1.0, 0.42, smoothstep(-0.2, 1.0, flame.y));
-    float shape = length(flame);
-    float outer = 1.0 - smoothstep(0.89, 1.04, shape);
-    float inner = 1.0 - smoothstep(0.22, 0.77, shape);
-
-    float bracket = rectangle(p + vec2(0.0, 0.056), vec2(0.009, 0.05));
-    float bowl = rectangle(p, vec2(0.024, 0.009));
-    wall = mix(wall, vec3(0.09, 0.065, 0.055), max(bracket, bowl));
-    vec3 fire = mix(vec3(1.0, 0.38, 0.075), vec3(1.0, 0.87, 0.47), inner);
-    return mix(wall, fire, outer);
-}
-
-float torchLight(vec2 p, float phase)
-{
-    vec2 offset = p - vec2(0.0, 0.038);
-    float flicker = 0.90 + 0.06 * sin(phase * 7.0) + 0.04 * sin(phase * 13.0);
-    return exp(-11.0 * dot(offset, offset)) * flicker;
+    // Disegna prima l'anello dietro al disco, poi la meta' che passa davanti.
+    vec3 color = mix(sky, ringColor, ring);
+    vec3 normal = vec3(point, sqrt(max(0.0, 1.0 - dot(point, point))));
+    const vec3 light = vec3(-0.58, 0.52, 0.63);
+    float daylight = smoothstep(-0.32, 0.68, dot(normal, light));
+    float band = 0.5 + 0.5 * sin(ringSpace.y * 14.0 - normal.z * 2.0);
+    vec3 surface = mix(vec3(0.30, 0.37, 0.53), vec3(0.65, 0.49, 0.62), band);
+    color = mix(color, surface * (0.25 + 0.65 * daylight), globe);
+    float nearSide = 1.0 - smoothstep(-edge, edge, ringSpace.y);
+    return mix(color, ringColor, ring * globe * nearSide);
 }
 
 void main()
 {
-    // La correzione delle proporzioni mantiene gli archi rotondi.
-    float aspect = length(dFdy(vUV)) / length(dFdx(vUV));
-    vec2 p = vec2((vUV.x - 0.5) * aspect, vUV.y);
-    vec2 grid = p * vec2(8.0, 14.0);
-    grid.x += 0.5 * mod(floor(grid.y), 2.0);
+    // Le coordinate corrette per il viewport mantengono tondo il pianeta.
+    float pixel = max(length(dFdy(vUV)), 0.00001);
+    float aspect = pixel / max(length(dFdx(vUV)), 0.00001);
+    vec2 position = vec2((vUV.x - 0.5) * aspect, vUV.y);
 
-    vec2 cell = fract(grid);
-    vec2 edges = min(cell, 1.0 - cell);
-    float stoneMask = smoothstep(0.025, 0.055, min(edges.x, edges.y));
-    float stoneShade = (hash(floor(grid)) - 0.5) * 0.075;
-    float grain = (hash(floor(p * 430.0)) - 0.5) * 0.025;
-    float bevel = smoothstep(0.85, 0.97, cell.y) * 0.025
-                - (1.0 - smoothstep(0.03, 0.14, cell.y)) * 0.035;
-    vec3 mortar = vec3(0.10, 0.10, 0.13);
-    vec3 stone = vec3(0.25, 0.24, 0.28) + stoneShade + grain + bevel;
-    vec3 color = mix(mortar, stone, stoneMask);
-    color *= 0.72 + 0.28 * (1.0 - smoothstep(0.18, 0.68, length(vUV - 0.5)));
+    vec3 sky = mix(vec3(0.19, 0.15, 0.28), vec3(0.032, 0.048, 0.12),
+                   smoothstep(0.08, 0.92, position.y));
+    float dustLine = 0.54 + position.x * 0.25 + 0.055 * sin(position.x * 5.0);
+    float dustDistance = (position.y - dustLine) / 0.19;
+    float dust = exp(-dustDistance * dustDistance);
+    sky += dust * vec3(0.058, 0.056, 0.13);
 
-    color = drawWindow(color, p - vec2(-0.28 * aspect, 0.69));
-    color = drawWindow(color, p - vec2( 0.28 * aspect, 0.69));
+    float farStars = stars(position, 46.0, 0.962, pixel);
+    float nearStars = stars(position + vec2(1.7, -2.4), 21.0, 0.953, pixel);
+    sky += vec3(0.46, 0.59, 0.83) * farStars * 0.48;
+    sky += vec3(0.95, 0.84, 0.72) * nearStars * 0.68;
+    sky = drawPlanet(sky, position - vec2(0.28 * aspect, 0.77), pixel);
 
-    vec2 leftTorch = p - vec2(-0.15 * aspect, 0.48);
-    vec2 rightTorch = p - vec2(0.15 * aspect, 0.48);
-    float light = torchLight(leftTorch, uTime) + torchLight(rightTorch, uTime + 2.3);
-    color += vec3(0.21, 0.105, 0.033) * light;
-    color = drawTorch(color, leftTorch, uTime);
-    color = drawTorch(color, rightTorch, uTime + 2.3);
-    FragColor = vec4(color, 1.0);
+    // Due profili bassi danno profondita' al paesaggio dietro al piano di gioco.
+    float distantRidge = 0.11 + 0.045 * sin(position.x * 5.2 + 0.7)
+                             + 0.022 * sin(position.x * 10.5);
+    float nearRidge = 0.058 + 0.025 * sin(position.x * 4.7 - 1.1)
+                            + 0.012 * sin(position.x * 12.0 + 0.4);
+    sky = mix(sky, vec3(0.10, 0.091, 0.19),
+              1.0 - smoothstep(distantRidge - pixel, distantRidge + pixel, position.y));
+    sky = mix(sky, vec3(0.053, 0.06, 0.126),
+              1.0 - smoothstep(nearRidge - pixel, nearRidge + pixel, position.y));
+
+    FragColor = vec4(sky, 1.0);
 }

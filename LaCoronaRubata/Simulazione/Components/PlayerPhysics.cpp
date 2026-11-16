@@ -32,6 +32,17 @@ bool overlapsVertically(const AABB& first, const AABB& second)
            first.halfSize.y + second.halfSize.y - contactTolerance;
 }
 
+/// Rileva l'appoggio sulla testa prima di spostare i giocatori in orizzontale.
+bool isStandingOn(const Player& upper, const Player& lower)
+{
+    const AABB upperBox = upper.bounds();
+    const AABB lowerBox = lower.bounds();
+    const float feet = upperBox.center.y - upperBox.halfSize.y;
+    const float head = lowerBox.center.y + lowerBox.halfSize.y;
+    return upper.onGround && overlapsHorizontally(upperBox, lowerBox) &&
+           std::abs(feet - head) <= contactTolerance;
+}
+
 /// Corregge le compenetrazioni verticali con i solidi. Azzera la velocita' verticale e segna
 /// l'appoggio quando il giocatore atterra sulla superficie.
 void verticalCollision(Player& player, const std::vector<SolidCollider>& solids)
@@ -70,12 +81,12 @@ float limitHorizontalDistance(const AABB& body, float distance, const AABB& obst
 }
 
 /// Calcola la corsa possibile verso il mondo fisso prima di considerare giocatori e casse.
-float distanceAgainstFixedSolids(const Player& player, float dt, float roomHalfWidth,
+float distanceAgainstFixedSolids(const Player& player, float requestedDistance, float roomHalfWidth,
                                  const std::vector<SolidCollider>& solids, std::size_t firstCrate)
 {
     const AABB body = player.bounds();
     const float limit = roomHalfWidth - body.halfSize.x;
-    float distance = std::clamp(body.center.x + player.velocity.x * dt, -limit, limit)
+    float distance = std::clamp(body.center.x + requestedDistance, -limit, limit)
                    - body.center.x;
     for (std::size_t i = 0; i < firstCrate; ++i) {
         const SolidCollider& solid = solids[i];
@@ -85,7 +96,7 @@ float distanceAgainstFixedSolids(const Player& player, float dt, float roomHalfW
 }
 
 /// Ferma il giocatore contro il compagno e tenta di spingere le casse raggiunte lungo il tragitto.
-void moveHorizontally(Player& player, const Player& other, float distance, float dt,
+void moveHorizontally(Player& player, const Player& other, float distance, float requestedDistance,
                       float roomHalfWidth, std::vector<SolidCollider>& solids,
                       std::vector<Crate>& crates)
 {
@@ -103,21 +114,51 @@ void moveHorizontally(Player& player, const Player& other, float distance, float
         }
     }
     player.position.x += distance;
-    if (std::abs(distance - player.velocity.x * dt) > contactTolerance) {
+    if (std::abs(distance - requestedDistance) > contactTolerance) {
         player.velocity.x = 0.0f;
     }
 }
 
-/// Risolve l'incontro frontale allo stesso istante per entrambi. Quando procedono
+/// Muove chi sta sotto e aggiunge la distanza effettiva ai comandi di chi sta sopra.
+void moveStackedPlayers(Player& lower, Player& upper, float dt, float roomHalfWidth,
+                        std::vector<SolidCollider>& solids, std::vector<Crate>& crates)
+{
+    const std::size_t firstCrate = solids.size() - crates.size();
+    const float lowerStartX = lower.position.x;
+    const float lowerRequested = lower.velocity.x * dt;
+    const float lowerDistance =
+        distanceAgainstFixedSolids(lower, lowerRequested, roomHalfWidth, solids, firstCrate);
+    moveHorizontally(lower, upper, lowerDistance, lowerRequested, roomHalfWidth, solids, crates);
+
+    const float carriedX = lower.position.x - lowerStartX;
+    const float upperRequested = upper.velocity.x * dt + carriedX;
+    const float upperDistance =
+        distanceAgainstFixedSolids(upper, upperRequested, roomHalfWidth, solids, firstCrate);
+    moveHorizontally(upper, lower, upperDistance, upperRequested, roomHalfWidth, solids, crates);
+}
+
+/// Gestisce l'appoggio sulla testa e l'incontro frontale. Per chi cammina affiancato
 /// nella stessa direzione, muove chi e' davanti prima di chi lo segue.
 void movePlayersHorizontally(Player& first, Player& second, float dt, float roomHalfWidth,
                              std::vector<SolidCollider>& solids, std::vector<Crate>& crates)
 {
+    // Gli input sono gia' stati applicati. Chi ha appena saltato non risulta piu' appoggiato.
+    if (isStandingOn(first, second)) {
+        moveStackedPlayers(second, first, dt, roomHalfWidth, solids, crates);
+        return;
+    }
+    if (isStandingOn(second, first)) {
+        moveStackedPlayers(first, second, dt, roomHalfWidth, solids, crates);
+        return;
+    }
+
     Player& left = first.position.x <= second.position.x ? first : second;
     Player& right = &left == &first ? second : first;
     const std::size_t firstCrate = solids.size() - crates.size();
-    float leftDistance = distanceAgainstFixedSolids(left, dt, roomHalfWidth, solids, firstCrate);
-    float rightDistance = distanceAgainstFixedSolids(right, dt, roomHalfWidth, solids, firstCrate);
+    const float leftRequested = left.velocity.x * dt;
+    const float rightRequested = right.velocity.x * dt;
+    float leftDistance = distanceAgainstFixedSolids(left, leftRequested, roomHalfWidth, solids, firstCrate);
+    float rightDistance = distanceAgainstFixedSolids(right, rightRequested, roomHalfWidth, solids, firstCrate);
 
     if (leftDistance > 0.0f && rightDistance < 0.0f &&
         overlapsVertically(left.bounds(), right.bounds())) {
@@ -129,11 +170,11 @@ void movePlayersHorizontally(Player& first, Player& second, float dt, float room
     }
 
     if (leftDistance > 0.0f && rightDistance > 0.0f) {
-        moveHorizontally(right, left, rightDistance, dt, roomHalfWidth, solids, crates);
-        moveHorizontally(left, right, leftDistance, dt, roomHalfWidth, solids, crates);
+        moveHorizontally(right, left, rightDistance, rightRequested, roomHalfWidth, solids, crates);
+        moveHorizontally(left, right, leftDistance, leftRequested, roomHalfWidth, solids, crates);
     } else {
-        moveHorizontally(left, right, leftDistance, dt, roomHalfWidth, solids, crates);
-        moveHorizontally(right, left, rightDistance, dt, roomHalfWidth, solids, crates);
+        moveHorizontally(left, right, leftDistance, leftRequested, roomHalfWidth, solids, crates);
+        moveHorizontally(right, left, rightDistance, rightRequested, roomHalfWidth, solids, crates);
     }
 }
 
@@ -256,17 +297,13 @@ void moveVertically(Player& player, float dt, float floorY, const std::vector<So
 } // namespace
 
 /// Fa cadere le casse, aggiorna i giocatori e risolve il contatto verticale reciproco.
-/// I collider delle casse vengono aggiunti in coda all'elenco dei solidi della stanza.
 void PlayerPhysics::updatePlayers(Player& first, Player& second,
                                   const PlayerInput& input1, const PlayerInput& input2,
                                   float dt, float roomHalfWidth, float floorY,
                                   std::vector<SolidCollider>& solids, std::vector<Crate>& crates)
 {
     if (!crates.empty()) {
-        const std::size_t firstCrate = solids.size();
-        for (const Crate& crate : crates) {
-            solids.push_back(crate.collider());
-        }
+        const std::size_t firstCrate = solids.size() - crates.size();
         // Durante la caduta, anche la testa di un giocatore puo' sostenere una cassa.
         const AABB firstBody = first.bounds();
         const AABB secondBody = second.bounds();

@@ -28,10 +28,10 @@ struct MovingWallDefinition {
 };
 
 struct GhostDefinition {
-    glm::vec2 startCenter; // Centro iniziale e quota fissa della pattuglia.
-    float patrolEndX;      // Secondo estremo della pattuglia orizzontale.
-    glm::vec2 size;        // Dimensioni complete della sagoma.
-    float speed;           // Velocita' in unita' mondo al secondo.
+    glm::vec2 startCenter;     // Centro del fantasma al primo estremo.
+    glm::vec2 patrolEndCenter; // Centro del fantasma al secondo estremo.
+    glm::vec2 size;            // Dimensioni complete della sagoma.
+    float speed;              // Velocita' in unita' mondo al secondo.
 };
 
 struct CrateDefinition {

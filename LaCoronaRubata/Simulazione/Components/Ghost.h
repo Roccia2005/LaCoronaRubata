@@ -19,7 +19,7 @@ public:
 
 private:
     glm::vec2 m_startCenter;
-    float m_patrolEndX;
+    glm::vec2 m_patrolEndCenter;
     glm::vec2 m_size;
     float m_speed;
     // Fase del ciclo, da 0 a 1 all'andata e da 1 a 2 al ritorno.

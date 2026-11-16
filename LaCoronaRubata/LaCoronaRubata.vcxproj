@@ -83,6 +83,7 @@
     <ClCompile Include="DecorativeShapes.cpp" />
     <ClCompile Include="Simulazione\Components\ExitDoor.cpp" />
     <ClCompile Include="Game.cpp" />
+    <ClCompile Include="GameFlow.cpp" />
     <ClCompile Include="Simulazione\Components\Ghost.cpp" />
     <ClCompile Include="Level.cpp" />
     <ClCompile Include="LevelCatalog.cpp" />
@@ -117,6 +118,7 @@
     <ClInclude Include="DecorativeShapes.h" />
     <ClInclude Include="Simulazione\Components\ExitDoor.h" />
     <ClInclude Include="Game.h" />
+    <ClInclude Include="GameFlow.h" />
     <ClInclude Include="Simulazione\Components\Ghost.h" />
     <ClInclude Include="Level.h" />
     <ClInclude Include="LevelView.h" />

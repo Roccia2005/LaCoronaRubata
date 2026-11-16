@@ -33,8 +33,8 @@ LevelView::LevelGeometries LevelView::loadGeometries()
         m_scene.addGeometry(DecorativeShapes::crystal(GameConfig::COIN_RADIUS)),
         m_scene.addGeometry(DecorativeShapes::ghost()),
         m_scene.addGeometry(DecorativeShapes::crate()),
-        {m_scene.addGeometry(DecorativeShapes::man()),
-         m_scene.addGeometry(DecorativeShapes::women())},
+        {m_scene.addGeometry(DecorativeShapes::littlePrince()),
+         m_scene.addGeometry(DecorativeShapes::fox())},
         m_scene.addGeometry(door.recess),
         {m_scene.addGeometry(door.leaves[0]), m_scene.addGeometry(door.leaves[1])},
         m_scene.addGeometry(door.frame),
@@ -138,12 +138,12 @@ void LevelView::createPressurePlate(const PressurePlate& plate)
 }
 
 /// Sincronizza le istanze con lo stato corrente della stanza.
-/// Quando cambia il numero del livello, ricostruisce prima le istanze.
+/// Crea le istanze al primo disegno e le ricostruisce quando cambia il numero della stanza.
 void LevelView::sync(const Level& level, std::size_t levelNumber)
 {
-    if (levelNumber != m_levelNumber) {
+    if (!m_loadedLevelNumber || *m_loadedLevelNumber != levelNumber) {
         rebuildInstances(level);
-        m_levelNumber = levelNumber;
+        m_loadedLevelNumber = levelNumber;
     }
 
     for (std::size_t i = 0; i < m_playerInstances.size(); ++i) {

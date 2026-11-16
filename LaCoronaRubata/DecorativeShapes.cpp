@@ -17,77 +17,108 @@ void addTriangle(MeshData& mesh, const glm::vec2& a,
     }
 }
 
-/// Aggiunge il rettangolo delimitato dalle coordinate minime e massime come due triangoli dello
-/// stesso colore.
+/// Divide in due triangoli un quadrilatero convesso con vertici ordinati lungo il bordo.
+void addQuad(MeshData& mesh, const glm::vec2& a, const glm::vec2& b,
+             const glm::vec2& c, const glm::vec2& d, const glm::vec3& color)
+{
+    addTriangle(mesh, a, b, c, color);
+    addTriangle(mesh, a, c, d, color);
+}
+
+/// Aggiunge un rettangolo delimitato dalle coordinate minime e massime.
 void addRectangle(MeshData& mesh, float xMin, float yMin,
                   float xMax, float yMax, const glm::vec3& color)
 {
-    const glm::vec2 A{xMin, yMin};
-    const glm::vec2 B{xMax, yMin};
-    const glm::vec2 C{xMax, yMax};
-    const glm::vec2 D{xMin, yMax};
-    addTriangle(mesh, A, B, C, color);
-    addTriangle(mesh, A, C, D, color);
+    addQuad(mesh, {xMin, yMin}, {xMax, yMin}, {xMax, yMax}, {xMin, yMax}, color);
 }
 
 } // namespace anonimo
 
 namespace DecorativeShapes {
 
-/// Restituisce la mesh locale del primo personaggio. Gli stivali arrivano a y = -0.5, cosi' la
-/// sagoma si appoggia alla base quando viene scalata.
-MeshData man()
+/// Compone il Piccolo Principe con il cappotto azzurro, il mantello e la sciarpa.
+/// La base degli stivali a y = -0.5 coincide con la quota dei piedi.
+MeshData littlePrince()
 {
     MeshData mesh;
-    // Sagoma unitaria centrata. Gli stivali toccano y = -0.5.
-    const glm::vec3 boots{0.16f, 0.12f, 0.22f};
-    const glm::vec3 tunic{0.16f, 0.38f, 0.68f};
-    const glm::vec3 gold{1.00f, 0.73f, 0.28f};
-    const glm::vec3 skin{0.90f, 0.65f, 0.47f};
-    const glm::vec3 hair{0.27f, 0.15f, 0.11f};
+    const glm::vec3 navy{0.08f, 0.15f, 0.28f};
+    const glm::vec3 cape{0.14f, 0.36f, 0.66f};
+    const glm::vec3 coat{0.31f, 0.66f, 0.93f};
+    const glm::vec3 trim{0.68f, 0.88f, 1.00f};
+    const glm::vec3 scarf{0.43f, 0.84f, 0.95f};
+    const glm::vec3 skin{0.98f, 0.77f, 0.58f};
+    const glm::vec3 hair{0.96f, 0.73f, 0.34f};
+    const glm::vec3 gold{1.00f, 0.88f, 0.53f};
 
-    addRectangle(mesh, -0.32f, -0.50f, -0.06f, -0.21f, boots);
-    addRectangle(mesh,  0.06f, -0.50f,  0.32f, -0.21f, boots);
-    addRectangle(mesh, -0.43f, -0.12f,  0.43f,  0.12f, tunic);
-    addRectangle(mesh, -0.32f, -0.31f,  0.32f,  0.16f, tunic);
-    addRectangle(mesh, -0.32f, -0.23f,  0.32f, -0.15f, boots);
-    addRectangle(mesh, -0.08f, -0.23f,  0.08f, -0.15f, gold);
-    addTriangle(mesh, {-0.19f, 0.13f}, {0.0f, -0.01f}, {0.19f, 0.13f}, gold);
+    addQuad(mesh, {-0.44f, -0.43f}, {0.39f, -0.40f},
+            {0.23f, 0.15f}, {-0.19f, 0.15f}, cape);
+    addRectangle(mesh, -0.20f, -0.50f, -0.05f, -0.25f, navy);
+    addRectangle(mesh, 0.05f, -0.50f, 0.20f, -0.25f, navy);
+    addQuad(mesh, {-0.28f, -0.35f}, {0.28f, -0.35f},
+            {0.19f, 0.13f}, {-0.19f, 0.13f}, coat);
+    addQuad(mesh, {-0.35f, -0.16f}, {-0.23f, -0.19f},
+            {-0.13f, 0.10f}, {-0.24f, 0.11f}, coat);
+    addQuad(mesh, {0.23f, -0.19f}, {0.35f, -0.16f},
+            {0.24f, 0.11f}, {0.13f, 0.10f}, coat);
+    addRectangle(mesh, -0.35f, -0.20f, -0.25f, -0.16f, skin);
+    addRectangle(mesh, 0.25f, -0.20f, 0.35f, -0.16f, skin);
+    addRectangle(mesh, -0.24f, -0.24f, 0.24f, -0.19f, cape);
+    addRectangle(mesh, -0.04f, -0.245f, 0.04f, -0.18f, gold);
 
-    addRectangle(mesh, -0.25f, 0.15f, 0.25f, 0.44f, skin);
-    addRectangle(mesh, -0.28f, 0.38f, 0.28f, 0.50f, hair);
-    addRectangle(mesh, -0.15f, 0.26f, -0.09f, 0.32f, boots);
-    addRectangle(mesh,  0.09f, 0.26f,  0.15f, 0.32f, boots);
+    addQuad(mesh, {-0.14f, 0.14f}, {0.14f, 0.14f},
+            {0.20f, 0.40f}, {-0.20f, 0.40f}, skin);
+    addQuad(mesh, {-0.23f, 0.29f}, {0.21f, 0.40f},
+            {0.08f, 0.49f}, {-0.14f, 0.47f}, hair);
+    addTriangle(mesh, {-0.18f, 0.41f}, {-0.02f, 0.50f}, {-0.02f, 0.42f}, gold);
+    addTriangle(mesh, {0.04f, 0.43f}, {0.20f, 0.50f}, {0.15f, 0.41f}, hair);
+    addRectangle(mesh, -0.12f, 0.25f, -0.08f, 0.30f, navy);
+    addRectangle(mesh, 0.08f, 0.25f, 0.12f, 0.30f, navy);
+
+    addQuad(mesh, {0.11f, 0.04f}, {0.44f, 0.00f},
+            {0.50f, 0.11f}, {0.16f, 0.15f}, scarf);
+    addRectangle(mesh, -0.19f, 0.06f, 0.18f, 0.15f, trim);
     return mesh;
 }
 
-/// Restituisce la mesh locale del secondo personaggio, con mantello, abiti e dettagli assemblati
-/// nella stessa sagoma.
-MeshData women()
+/// Compone la Volpe con orecchie a punta, muso chiaro e coda folta.
+/// La base delle zampe ha la stessa quota locale degli stivali del Principe.
+MeshData fox()
 {
     MeshData mesh;
-    const glm::vec3 boots{0.23f, 0.10f, 0.16f};
-    const glm::vec3 cape{0.50f, 0.14f, 0.29f};
-    const glm::vec3 tunic{0.81f, 0.27f, 0.39f};
-    const glm::vec3 gold{1.00f, 0.76f, 0.37f};
-    const glm::vec3 skin{0.82f, 0.54f, 0.36f};
-    const glm::vec3 hair{0.22f, 0.13f, 0.15f};
+    const glm::vec3 dark{0.23f, 0.09f, 0.12f};
+    const glm::vec3 rust{0.77f, 0.25f, 0.13f};
+    const glm::vec3 orange{0.96f, 0.45f, 0.19f};
+    const glm::vec3 honey{1.00f, 0.61f, 0.29f};
+    const glm::vec3 cream{1.00f, 0.88f, 0.71f};
 
-    addTriangle(mesh, {-0.49f, -0.35f}, {0.49f, -0.35f}, {0.0f, 0.20f}, cape);
-    addRectangle(mesh, -0.26f, -0.50f, -0.05f, -0.25f, boots);
-    addRectangle(mesh,  0.05f, -0.50f,  0.26f, -0.25f, boots);
-    addRectangle(mesh, -0.39f, -0.11f,  0.39f,  0.11f, tunic);
-    addRectangle(mesh, -0.25f, -0.33f,  0.25f,  0.15f, tunic);
-    addRectangle(mesh, -0.25f, -0.22f,  0.25f, -0.16f, gold);
-    addRectangle(mesh, -0.06f,  0.03f,  0.06f,  0.11f, gold);
+    // La coda parte dietro il corpo e risale sul fianco.
+    addQuad(mesh, {0.12f, -0.38f}, {0.38f, -0.30f},
+            {0.50f, -0.07f}, {0.28f, -0.13f}, rust);
+    addQuad(mesh, {0.28f, -0.13f}, {0.50f, -0.07f},
+            {0.46f, 0.15f}, {0.34f, 0.08f}, orange);
+    addTriangle(mesh, {0.36f, 0.00f}, {0.48f, 0.02f}, {0.46f, 0.15f}, cream);
 
-    addRectangle(mesh, -0.30f,  0.12f,  0.30f, 0.50f, hair);
-    addRectangle(mesh,  0.20f, -0.11f,  0.33f, 0.30f, hair);
-    addRectangle(mesh,  0.20f, -0.08f,  0.33f, -0.02f, gold);
-    addRectangle(mesh, -0.22f,  0.15f,  0.22f, 0.39f, skin);
-    addTriangle(mesh, {-0.24f, 0.33f}, {0.18f, 0.40f}, {-0.24f, 0.44f}, hair);
-    addRectangle(mesh, -0.14f, 0.24f, -0.08f, 0.30f, boots);
-    addRectangle(mesh,  0.08f, 0.24f,  0.14f, 0.30f, boots);
+    addQuad(mesh, {-0.33f, -0.36f}, {0.21f, -0.36f},
+            {0.18f, 0.09f}, {-0.25f, 0.09f}, rust);
+    addQuad(mesh, {-0.24f, -0.27f}, {0.07f, -0.30f},
+            {0.12f, 0.06f}, {-0.20f, 0.06f}, orange);
+    addTriangle(mesh, {-0.22f, 0.06f}, {-0.06f, -0.26f}, {0.10f, 0.06f}, cream);
+    addRectangle(mesh, -0.29f, -0.50f, -0.14f, -0.34f, dark);
+    addRectangle(mesh, 0.02f, -0.50f, 0.17f, -0.34f, dark);
+
+    addTriangle(mesh, {-0.37f, 0.19f}, {-0.34f, 0.50f}, {-0.12f, 0.30f}, rust);
+    addTriangle(mesh, {0.03f, 0.30f}, {0.24f, 0.50f}, {0.27f, 0.19f}, rust);
+    addTriangle(mesh, {-0.32f, 0.24f}, {-0.31f, 0.42f}, {-0.21f, 0.29f}, cream);
+    addTriangle(mesh, {0.12f, 0.29f}, {0.22f, 0.42f}, {0.23f, 0.24f}, cream);
+    addQuad(mesh, {-0.45f, 0.13f}, {0.35f, 0.13f},
+            {0.17f, 0.32f}, {-0.27f, 0.32f}, orange);
+    addTriangle(mesh, {-0.34f, 0.24f}, {-0.05f, 0.34f}, {0.23f, 0.24f}, honey);
+    addQuad(mesh, {-0.45f, 0.13f}, {-0.18f, -0.05f},
+            {0.08f, -0.05f}, {0.35f, 0.13f}, cream);
+    addTriangle(mesh, {-0.20f, 0.15f}, {-0.05f, 0.01f}, {0.10f, 0.15f}, orange);
+    addRectangle(mesh, -0.24f, 0.15f, -0.18f, 0.21f, dark);
+    addRectangle(mesh, 0.08f, 0.15f, 0.14f, 0.21f, dark);
+    addTriangle(mesh, {-0.11f, 0.03f}, {0.01f, 0.03f}, {-0.05f, -0.03f}, dark);
     return mesh;
 }
 
