@@ -1,6 +1,7 @@
 #include "LevelView.h"
 #include "DecorativeShapes.h"
 #include "Level.h"
+#include "ObjLoader.h"
 #include "ShapeGenerator.h"
 #include <glm/gtc/matrix_transform.hpp>
 
@@ -30,8 +31,8 @@ LevelView::LevelGeometries LevelView::loadGeometries()
         m_scene.addGeometry(ShapeGenerator::rectangle(
             1.0f, 1.0f, {107.0f / 255.0f, 112.0f / 255.0f, 107.0f / 255.0f})),
         m_scene.addGeometry(DecorativeShapes::movingWall()),
-        m_scene.addGeometry(DecorativeShapes::crystal(GameConfig::COIN_RADIUS)),
-        m_scene.addGeometry(DecorativeShapes::ghost()),
+        m_scene.addGeometry(ObjLoader::load("../assets/stella.obj")),
+        m_scene.addGeometry(ObjLoader::load("../assets/serpente.obj")),
         m_scene.addGeometry(DecorativeShapes::crate()),
         {m_scene.addGeometry(DecorativeShapes::littlePrince()),
          m_scene.addGeometry(DecorativeShapes::fox())},
@@ -53,7 +54,7 @@ void LevelView::rebuildInstances(const Level& level)
     m_movingWallInstances.clear();
     m_ghostInstances.clear();
     m_crateInstances.clear();
-    m_coinInstances.clear();
+    m_starInstances.clear();
 
     // L'ordine di inserimento stabilisce la sovrapposizione degli oggetti 2D.
     createDoor(level.exitDoor().area());
@@ -77,12 +78,12 @@ void LevelView::rebuildInstances(const Level& level)
 
     // Tutte le pareti mobili condividono la stessa mesh e hanno un'istanza ciascuna.
     for (std::size_t i = 0; i < level.movingWallCount(); ++i) {
-        m_movingWallInstances.push_back(m_scene.addInstance(m_geometries.movingWall));
+        m_movingWallInstances.push_back(m_scene.addInstance(m_geometries.movingWall, RenderPass::MovingWall));
     }
 
     // I fantasmi condividono la stessa sagoma e hanno ciascuno una propria istanza.
     for (std::size_t i = 0; i < level.ghosts().size(); ++i) {
-        m_ghostInstances.push_back(m_scene.addInstance(m_geometries.ghost));
+        m_ghostInstances.push_back(m_scene.addInstance(m_geometries.snake));
     }
 
     // Le casse condividono una mesh e hanno ciascuna la propria posizione.
@@ -90,10 +91,8 @@ void LevelView::rebuildInstances(const Level& level)
         m_crateInstances.push_back(m_scene.addInstance(m_geometries.crate));
     }
 
-    for (const Collectible& coin : level.coins()) {
-        const auto index = m_scene.addInstance(m_geometries.crystal, RenderPass::Coins);
-        m_scene.instance(index).modelMatrix = makeModel(coin.position);
-        m_coinInstances.push_back(index);
+    for (std::size_t i = 0; i < level.stars().size(); ++i) {
+        m_starInstances.push_back(m_scene.addInstance(m_geometries.star, RenderPass::Stars));
     }
 }
 
@@ -139,7 +138,7 @@ void LevelView::createPressurePlate(const PressurePlate& plate)
 
 /// Sincronizza le istanze con lo stato corrente della stanza.
 /// Crea le istanze al primo disegno e le ricostruisce quando cambia il numero della stanza.
-void LevelView::sync(const Level& level, std::size_t levelNumber)
+void LevelView::sync(const Level& level, std::size_t levelNumber, float timeSeconds, bool playable)
 {
     if (!m_loadedLevelNumber || *m_loadedLevelNumber != levelNumber) {
         rebuildInstances(level);
@@ -148,7 +147,11 @@ void LevelView::sync(const Level& level, std::size_t levelNumber)
 
     for (std::size_t i = 0; i < m_playerInstances.size(); ++i) {
         const Player& player = level.players()[i];
-        m_scene.instance(m_playerInstances[i]).modelMatrix = makeModel(player.position, player.size);
+        const glm::vec2 renderSize = player.size * GameConfig::PLAYER_RENDER_SCALE;
+        // Ingrandisce la sagoma mantenendo i piedi alla quota di appoggio.
+        const glm::vec2 renderCenter = player.position
+            + glm::vec2(0.0f, (renderSize.y - player.size.y) * 0.5f);
+        m_scene.instance(m_playerInstances[i]).modelMatrix = makeModel(renderCenter, renderSize);
     }
     updateDoorLeaves(level.exitDoor());
 
@@ -162,7 +165,9 @@ void LevelView::sync(const Level& level, std::size_t levelNumber)
     // Usa il collider corrente affinche' la sagoma disegnata coincida con quella fisica.
     for (std::size_t i = 0; i < m_movingWallInstances.size(); ++i) {
         const SolidCollider wall = level.movingWall(i).collider();
-        m_scene.instance(m_movingWallInstances[i]).modelMatrix = makeModel(wall.position, wall.size);
+        auto& instance = m_scene.instance(m_movingWallInstances[i]);
+        instance.modelMatrix = makeModel(wall.position, wall.size);
+        instance.moving = playable && level.isMovingWallInMotion(i);
     }
 
     // La simulazione fornisce la posizione e le dimensioni usate anche per il disegno.
@@ -178,8 +183,20 @@ void LevelView::sync(const Level& level, std::size_t levelNumber)
         m_scene.instance(m_crateInstances[i]).modelMatrix = makeModel(crate.position, crate.size);
     }
 
-    for (std::size_t i = 0; i < m_coinInstances.size(); ++i) {
-        m_scene.instance(m_coinInstances[i]).visible = !level.coins()[i].collected;
+    constexpr float starDiameter = 2.0f * GameConfig::STAR_RADIUS;
+    const glm::vec3 starScale{starDiameter, starDiameter, 1.0f};
+    for (std::size_t i = 0; i < m_starInstances.size(); ++i) {
+        const Collectible& star = level.stars()[i];
+        auto& instance = m_scene.instance(m_starInstances[i]);
+        instance.visible = !star.collected;
+        if (!instance.visible) continue;
+
+        const float phase = static_cast<float>(i) * GameConfig::STAR_PHASE_STEP;
+        const float angle = timeSeconds * GameConfig::STAR_ROTATION_SPEED + phase;
+        // T * R * S: scala e ruota la mesh condivisa attorno al centro locale, poi la posiziona.
+        auto model = glm::translate(glm::mat4(1.0f), glm::vec3(star.position, 0.0f));
+        model = glm::rotate(model, angle, glm::vec3(0.0f, 0.0f, 1.0f));
+        instance.modelMatrix = glm::scale(model, starScale);
     }
 }
 

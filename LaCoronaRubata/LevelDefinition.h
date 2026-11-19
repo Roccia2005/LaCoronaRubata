@@ -44,7 +44,7 @@ struct LevelDefinition {
     std::array<glm::vec2, 2> spawnFeet; // Posizione dei piedi allo spawn.
     glm::vec2 doorBase;                // Centro del bordo inferiore della porta.
     std::vector<PlatformDefinition> platforms;
-    std::vector<glm::vec2> crystals;
+    std::vector<glm::vec2> stars;
     std::vector<PressurePlateDefinition> pressurePlates;
     float floorY = GameConfig::DEFAULT_FLOOR_Y;
     std::vector<MovingWallDefinition> movingWalls{};

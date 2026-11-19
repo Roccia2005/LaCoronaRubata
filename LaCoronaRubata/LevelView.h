@@ -13,7 +13,7 @@ struct SolidCollider;
 class LevelView {
 public:
     LevelView();
-    void sync(const Level& level, std::size_t levelNumber);
+    void sync(const Level& level, std::size_t levelNumber, float timeSeconds, bool playable);
     const Scene& scene() const { return m_scene; }
 
 private:
@@ -24,8 +24,8 @@ private:
     struct LevelGeometries {
         std::size_t solidRectangle;
         std::size_t movingWall;
-        std::size_t crystal;
-        std::size_t ghost;
+        std::size_t star;
+        std::size_t snake;
         std::size_t crate;
         std::array<std::size_t, 2> players;
         std::size_t doorRecess;
@@ -49,7 +49,7 @@ private:
     std::vector<std::size_t> m_ghostInstances;
     // Indici delle istanze delle casse, nello stesso ordine di Level::crates().
     std::vector<std::size_t> m_crateInstances;
-    std::vector<std::size_t> m_coinInstances;
+    std::vector<std::size_t> m_starInstances;
 
     LevelGeometries loadGeometries();
     void rebuildInstances(const Level& level);

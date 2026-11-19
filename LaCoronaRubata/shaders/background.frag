@@ -3,12 +3,18 @@ in vec2 vUV;
 out vec4 FragColor;
 uniform float uTime;
 
+const float PLANET_CROSSING_SECONDS = 60.0; // Durata positiva del ciclo, in secondi.
+const float PLANET_VERTICAL_AMPLITUDE = 0.05; // Scostamento massimo, in altezze del viewport.
+const float PI = 3.14159265358979323846;
+const float PLANET_RADIUS = 0.092;
+const float PLANET_RING_OUTER_RADIUS = 2.04; // Raggi del disco.
+
 float hash(vec2 point)
 {
     return fract(sin(dot(point, vec2(127.1, 311.7))) * 43758.5453);
 }
 
-// Ogni cella puo' produrre una stella con posizione e fase proprie.
+// Ogni cella puo' produrre una stella con posizione e luminosita' stabili.
 float stars(vec2 position, float density, float threshold, float pixel)
 {
     vec2 grid = position * density;
@@ -19,22 +25,20 @@ float stars(vec2 position, float density, float threshold, float pixel)
     float radius = mix(0.0009, 0.0024, hash(cell + 29.0));
     float core = 1.0 - smoothstep(max(0.0, radius - pixel), radius + pixel, distanceToStar);
     float halo = 1.0 - smoothstep(radius, 3.0 * radius, distanceToStar);
-    float twinkle = 0.78 + 0.22 * sin(uTime * 1.8 + seed * 83.0);
-    return step(threshold, seed) * twinkle * (0.78 * core + 0.22 * halo);
+    return step(threshold, seed) * 0.78 * (0.78 * core + 0.22 * halo);
 }
 
 vec3 drawPlanet(vec3 sky, vec2 position, float pixel)
 {
-    const float radius = 0.092;
-    vec2 point = position / radius;
+    vec2 point = position / PLANET_RADIUS;
     float distanceToCenter = length(point);
-    float edge = pixel / radius;
+    float edge = pixel / PLANET_RADIUS;
     float globe = 1.0 - smoothstep(1.0 - edge, 1.0 + edge, distanceToCenter);
 
     vec2 ringSpace = mat2(0.94, 0.34, -0.34, 0.94) * point;
     float ringRadius = length(ringSpace * vec2(1.0, 3.4));
     float ring = smoothstep(1.24, 1.35, ringRadius) *
-                 (1.0 - smoothstep(1.90, 2.04, ringRadius));
+                 (1.0 - smoothstep(1.90, PLANET_RING_OUTER_RADIUS, ringRadius));
     ring *= 0.48 + 0.15 * sin(ringRadius * 34.0);
     const vec3 ringColor = vec3(0.56, 0.55, 0.71);
 
@@ -68,7 +72,12 @@ void main()
     float nearStars = stars(position + vec2(1.7, -2.4), 21.0, 0.953, pixel);
     sky += vec3(0.46, 0.59, 0.83) * farStars * 0.48;
     sky += vec3(0.95, 0.84, 0.72) * nearStars * 0.68;
-    sky = drawPlanet(sky, position - vec2(0.28 * aspect, 0.77), pixel);
+    float phase = fract(uTime / PLANET_CROSSING_SECONDS);
+    // Il margine contiene anche gli anelli inclinati, piu' un pixel di sicurezza.
+    float margin = PLANET_RADIUS * PLANET_RING_OUTER_RADIUS + pixel;
+    vec2 planetCenter = vec2(mix(-0.5 * aspect - margin, 0.5 * aspect + margin, phase),
+                             0.77 + PLANET_VERTICAL_AMPLITUDE * sin(2.0 * PI * phase));
+    sky = drawPlanet(sky, position - planetCenter, pixel);
 
     // Due profili bassi danno profondita' al paesaggio dietro al piano di gioco.
     float distantRidge = 0.11 + 0.045 * sin(position.x * 5.2 + 0.7)

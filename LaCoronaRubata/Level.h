@@ -20,7 +20,7 @@ public:
     float floorY() const { return m_floorY; }
     const std::array<Player, 2>& players() const { return m_players; }
     const std::vector<SolidCollider>& platforms() const { return m_platforms; }
-    const std::vector<Collectible>& coins() const { return m_coins; }
+    const std::vector<Collectible>& stars() const { return m_stars; }
     /// Espone le casse per disegnarle nelle loro posizioni correnti.
     const std::vector<Crate>& crates() const { return m_crates; }
     /// Espone i fantasmi per disegnarli nelle loro posizioni correnti.
@@ -31,6 +31,7 @@ public:
     std::size_t movingWallCount() const { return m_movingWalls.size(); }
     /// Espone una parete in sola lettura, tramite il suo indice nella mappa.
     const MovingWall& movingWall(std::size_t index) const { return m_movingWalls.at(index).wall; }
+    bool isMovingWallInMotion(std::size_t index) const { return m_movingWalls.at(index).moving; }
     /// Espone la porta di uscita in sola lettura, compresa la frazione di apertura.
     const ExitDoor& exitDoor() const { return m_exitDoor; }
     int score() const { return m_score; }
@@ -40,13 +41,14 @@ private:
     struct LinkedMovingWall {
         MovingWall wall;
         std::vector<std::size_t> pressurePlateIndices;
+        bool moving = false;
     };
 
     glm::vec2 m_roomHalfSize;
     float m_floorY;
     std::array<Player, 2> m_players{};
     std::vector<SolidCollider> m_platforms;
-    std::vector<Collectible> m_coins;
+    std::vector<Collectible> m_stars;
     std::vector<PressurePlate> m_pressurePlates;
     std::vector<LinkedMovingWall> m_movingWalls;
     std::vector<Ghost> m_ghosts;
@@ -58,5 +60,5 @@ private:
     void updatePressurePlates();
     bool updateMovingWalls(float dt);
     bool updateGhosts(float dt);
-    void collectCoins(float currentTime);
+    void collectStars(float currentTime);
 };

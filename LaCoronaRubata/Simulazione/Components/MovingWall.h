@@ -22,6 +22,8 @@ public:
     /// Riporta la parete e il suo collider alla posizione chiusa.
     void reset();
 
+    bool isBetweenStops() const { return m_progress > 0.0f && m_progress < 1.0f; }
+
 private:
     glm::vec2 m_closedCenter;
     glm::vec2 m_openCenter;

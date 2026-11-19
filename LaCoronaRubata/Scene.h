@@ -5,13 +5,14 @@
 #include <vector>
 #include <cstddef>
 // Una istanza NON contiene una copia dei vertici: conserva un indice e una matrice.
-enum class RenderPass { Basic, Coins };
+enum class RenderPass { Basic, MovingWall, Stars };
 
 struct GeometryInstance {
     std::size_t geometryIndex=0;
     glm::mat4 modelMatrix{1.0f};
     bool visible=true;
     RenderPass pass = RenderPass::Basic;
+    bool moving = false;
 };
 class Scene {
     std::vector<std::unique_ptr<Geometry>> m_geometries;

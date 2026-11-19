@@ -128,7 +128,7 @@ MeshData crystal(float radius)
 {
     MeshData mesh;
     // Rombo: quattro vertici e due triangoli, senza dettagli aggiuntivi.
-    // Resta contenuto nell'AABB di semilato COIN_RADIUS.
+    // Resta contenuto nell'AABB di semilato STAR_RADIUS.
     const glm::vec2 top{0.0f, radius};
     const glm::vec2 right{radius, 0.0f};
     const glm::vec2 bottom{0.0f, -radius};
@@ -258,29 +258,28 @@ DoorMeshes door()
 PressurePlateMeshes pressurePlate()
 {
     PressurePlateMeshes meshes;
-    const glm::vec3 stone{0.40f, 0.37f, 0.42f};
-    const glm::vec3 shadow{0.24f, 0.22f, 0.27f};
-    const glm::vec3 rim{0.55f, 0.51f, 0.56f};
+    const glm::vec3 housing{0.20f, 0.23f, 0.34f};
+    const glm::vec3 steel{0.64f, 0.70f, 0.80f};
+    const glm::vec3 bevel{0.82f, 0.88f, 0.94f};
 
-    // Base fissa. Il fondo e' a y = -0.5 e il bordo superiore a y = 0.15.
-    addRectangle(meshes.base, -0.5f, -0.5f, 0.5f, 0.15f, stone);
-    addRectangle(meshes.base, -0.5f, -0.5f, 0.5f, -0.37f, shadow);
-    addRectangle(meshes.base, -0.5f, 0.04f, 0.5f, 0.15f, rim);
-    addRectangle(meshes.base, -0.40f, 0.04f, 0.40f, 0.15f, shadow);
+    // I bordi sporgono dalla sagoma fisica per restare visibili sotto una cassa.
+    addQuad(meshes.base, {-0.88f, -0.50f}, {0.88f, -0.50f},
+            {0.77f, 0.15f}, {-0.77f, 0.15f}, housing);
+    addRectangle(meshes.base, -0.80f, -0.39f, 0.80f, -0.08f, steel);
+    addRectangle(meshes.base, -0.77f, -0.08f, 0.77f, 0.15f, bevel);
 
-    // Le due mesh del pulsante hanno la stessa forma. La matrice dell'istanza
-    // puo' abbassare il pulsante senza muovere la base.
-    const auto makeButton = [](const glm::vec3& side, const glm::vec3& top) {
+    // La vista abbassa il pulsante premuto. Il bordo superiore segue il collider.
+    const auto makeButton = [](const glm::vec3& body, const glm::vec3& light) {
         MeshData mesh;
-        addRectangle(mesh, -0.40f, 0.04f, 0.40f, 0.38f, side);
-        addRectangle(mesh, -0.37f, 0.38f, 0.37f, 0.5f, top);
-        addTriangle(mesh, {-0.40f, 0.38f}, {-0.37f, 0.38f}, {-0.37f, 0.5f}, top);
-        addTriangle(mesh, {0.37f, 0.38f}, {0.40f, 0.38f}, {0.37f, 0.5f}, top);
+        addQuad(mesh, {-0.64f, -0.12f}, {0.64f, -0.12f},
+                {0.57f, 0.50f}, {-0.57f, 0.50f}, body);
+        addQuad(mesh, {-0.59f, 0.24f}, {0.59f, 0.24f},
+                {0.57f, 0.50f}, {-0.57f, 0.50f}, light);
         return mesh;
     };
 
-    meshes.releasedPlate = makeButton({0.57f, 0.31f, 0.13f}, {0.85f, 0.57f, 0.25f});
-    meshes.pressedPlate = makeButton({0.20f, 0.48f, 0.28f}, {0.47f, 0.79f, 0.40f});
+    meshes.releasedPlate = makeButton({0.74f, 0.14f, 0.21f}, {1.0f, 0.43f, 0.46f});
+    meshes.pressedPlate = makeButton({0.10f, 0.62f, 0.33f}, {0.41f, 1.0f, 0.58f});
     return meshes;
 }
 
@@ -395,37 +394,11 @@ MeshData wall()
     return mesh;
 }
 
-/// Disegna il pannello di ferro della parete mobile dentro il rettangolo unitario.
-/// LevelView lo scala alle dimensioni del collider.
+/// Il materiale del muro viene disegnato sul rettangolo unitario.
 MeshData movingWall()
 {
     MeshData mesh;
-    const glm::vec3 outline{0.10f, 0.13f, 0.19f};
-    const glm::vec3 frame{0.53f, 0.63f, 0.72f};
-    const glm::vec3 inset{0.20f, 0.28f, 0.37f};
-    const glm::vec3 rib{0.32f, 0.43f, 0.54f};
-    const glm::vec3 brace{0.40f, 0.51f, 0.62f};
-    const glm::vec3 brass{0.91f, 0.60f, 0.25f};
-    const glm::vec3 brassLight{1.0f, 0.81f, 0.42f};
-
-    addRectangle(mesh, -0.50f, -0.50f, 0.50f, 0.50f, outline);
-    addRectangle(mesh, -0.45f, -0.47f, 0.45f, 0.47f, frame);
-    addRectangle(mesh, -0.34f, -0.43f, 0.34f, 0.43f, inset);
-    for (float x : {-0.21f, 0.0f, 0.21f}) {
-        addRectangle(mesh, x - 0.05f, -0.36f, x + 0.05f, 0.36f, rib);
-    }
-
-    // Le traverse e i rivetti in ottone distinguono il pannello dalle piattaforme.
-    for (float y : {-0.35f, 0.35f}) {
-        addRectangle(mesh, -0.45f, y - 0.065f, 0.45f, y + 0.065f, brace);
-        addRectangle(mesh, -0.45f, y + 0.052f, 0.45f, y + 0.065f, frame);
-        for (float x : {-0.29f, 0.29f}) {
-            const glm::vec2 left{x - 0.074f, y};
-            const glm::vec2 right{x + 0.074f, y};
-            addTriangle(mesh, left, right, {x, y + 0.033f}, brassLight);
-            addTriangle(mesh, left, {x, y - 0.033f}, right, brass);
-        }
-    }
+    addRectangle(mesh, -0.5f, -0.5f, 0.5f, 0.5f, {1.0f, 1.0f, 1.0f});
     return mesh;
 }
 

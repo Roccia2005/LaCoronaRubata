@@ -60,7 +60,7 @@ namespace {
 }
 
 /// Costruisce lo stato iniziale della stanza a partire dalla mappa. Imposta confini, spawn, area
-/// di uscita, piattaforme, cristalli, pedane, pareti mobili, fantasmi e casse.
+/// di uscita, piattaforme, stelle, pedane, pareti mobili, fantasmi e casse.
 Level::Level(const LevelDefinition& definition)
     : m_roomHalfSize(definition.roomHalfSize), m_floorY(definition.floorY),
       m_exitDoor(definition.doorBase)
@@ -75,8 +75,8 @@ Level::Level(const LevelDefinition& definition)
         const glm::vec2 center = platform.basePosition + glm::vec2(0.0f, platform.size.y * 0.5f);
         m_platforms.push_back({center, platform.size});
     }
-    for (const auto& position : definition.crystals) {
-        m_coins.push_back({position});
+    for (const auto& position : definition.stars) {
+        m_stars.push_back({position});
     }
     for (const auto& plate : definition.pressurePlates) {
         m_pressurePlates.emplace_back(plate);
@@ -106,7 +106,7 @@ Level::Level(const LevelDefinition& definition)
 
 /// Avanza la fisica dei giocatori e delle casse, poi aggiorna la stanza.
 /// Il contatto con un fantasma o con una parete in chiusura resetta la stanza.
-/// currentTime e' il tempo in secondi usato per calcolare l'oscillazione dei cristalli.
+/// currentTime e' il tempo in secondi usato per calcolare l'oscillazione delle stelle.
 void Level::update(float dt, const PlayerInput& input1, const PlayerInput& input2,
                    float currentTime)
 {
@@ -132,7 +132,7 @@ void Level::update(float dt, const PlayerInput& input1, const PlayerInput& input
         reset();
         return;
     }
-    collectCoins(currentTime);
+    collectStars(currentTime);
 }
 
 /// Restituisce true quando il rettangolo del giocatore si sovrappone all'area di uscita.
@@ -198,6 +198,7 @@ void Level::updatePressurePlates()
 bool Level::updateMovingWalls(float dt)
 {
     for (LinkedMovingWall& link : m_movingWalls) {
+        link.moving = false;
         const bool activated = std::any_of(
             link.pressurePlateIndices.begin(), link.pressurePlateIndices.end(),
             [&](std::size_t index) { return m_pressurePlates[index].isPressed(); });
@@ -219,6 +220,7 @@ bool Level::updateMovingWalls(float dt)
                 return wallPathIntersects(current, nextPosition, crate.bounds());
             })) {
             link.wall = next;
+            link.moving = current.position != nextPosition && link.wall.isBetweenStops();
         }
     }
     return false;
@@ -241,23 +243,23 @@ bool Level::updateGhosts(float dt)
     return false;
 }
 
-/// Controlla il contatto del primo giocatore con i cristalli ancora disponibili, alla loro
+/// Controlla il contatto del primo giocatore con le stelle ancora disponibili, alla loro
 /// posizione oscillante. Ogni nuova raccolta assegna 10 punti.
-void Level::collectCoins(float currentTime)
+void Level::collectStars(float currentTime)
 {
     const AABB playerBox = m_players[0].bounds();
-    for (std::size_t i = 0; i < m_coins.size(); ++i) {
-        Collectible& coin = m_coins[i];
-        if (coin.collected) continue;
+    for (std::size_t i = 0; i < m_stars.size(); ++i) {
+        Collectible& star = m_stars[i];
+        if (star.collected) continue;
         // Stessa sinusoide del vertex shader: collisione e immagine coincidono.
-        glm::vec2 animatedPosition = coin.position;
-        const float phase = static_cast<float>(i) * COIN_PHASE_STEP;
-        animatedPosition.y += COIN_BOB_AMPLITUDE *
-            std::sin(COIN_BOB_FREQUENCY * currentTime + phase);
-        const AABB coinBox{animatedPosition, {COIN_RADIUS, COIN_RADIUS}};
-        if (PlayerPhysics::intersects(playerBox, coinBox)) {
-            coin.collected = true;
-            m_score += POINTS_PER_CRYSTAL;
+        glm::vec2 animatedPosition = star.position;
+        const float phase = static_cast<float>(i) * STAR_PHASE_STEP;
+        animatedPosition.y += STAR_BOB_AMPLITUDE *
+            std::sin(STAR_BOB_FREQUENCY * currentTime + phase);
+        const AABB starBox{animatedPosition, {STAR_RADIUS, STAR_RADIUS}};
+        if (PlayerPhysics::intersects(playerBox, starBox)) {
+            star.collected = true;
+            m_score += POINTS_PER_STAR;
         }
     }
 }
@@ -269,7 +271,7 @@ bool Level::isFinished() const
     return m_exitDoor.isOpen() && isPlayerAtExit(m_players[0]) && isPlayerAtExit(m_players[1]);
 }
 
-/// Ripristina giocatori, porta, pedane, pareti, fantasmi, casse, punteggio e cristalli.
+/// Ripristina giocatori, porta, pedane, pareti, fantasmi, casse, punteggio e stelle.
 void Level::reset()
 {
     m_exitDoor.reset();
@@ -281,6 +283,7 @@ void Level::reset()
     }
     for (LinkedMovingWall& link : m_movingWalls) {
         link.wall.reset();
+        link.moving = false;
     }
     for (Ghost& ghost : m_ghosts) {
         ghost.reset();
@@ -289,7 +292,7 @@ void Level::reset()
         crate.reset();
     }
     m_score = 0;
-    for (Collectible& coin : m_coins) {
-        coin.collected = false;
+    for (Collectible& star : m_stars) {
+        star.collected = false;
     }
 }

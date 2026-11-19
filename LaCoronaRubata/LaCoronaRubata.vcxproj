@@ -78,9 +78,10 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="BackgroundRenderer.cpp" />
-    <ClCompile Include="CoinRenderer.cpp" />
+    <ClCompile Include="StarRenderer.cpp" />
     <ClCompile Include="Simulazione\Components\Crate.cpp" />
     <ClCompile Include="DecorativeShapes.cpp" />
+    <ClCompile Include="ObjLoader.cpp" />
     <ClCompile Include="Simulazione\Components\ExitDoor.cpp" />
     <ClCompile Include="Game.cpp" />
     <ClCompile Include="GameFlow.cpp" />
@@ -113,9 +114,10 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="BackgroundRenderer.h" />
-    <ClInclude Include="CoinRenderer.h" />
+    <ClInclude Include="StarRenderer.h" />
     <ClInclude Include="Simulazione\Components\Crate.h" />
     <ClInclude Include="DecorativeShapes.h" />
+    <ClInclude Include="ObjLoader.h" />
     <ClInclude Include="Simulazione\Components\ExitDoor.h" />
     <ClInclude Include="Game.h" />
     <ClInclude Include="GameFlow.h" />
@@ -161,7 +163,9 @@
     <None Include="shaders\background.vert" />
     <None Include="shaders\basic.frag" />
     <None Include="shaders\basic.vert" />
-    <None Include="shaders\coin.vert" />
+    <None Include="shaders\star.vert" />
+    <None Include="shaders\moving_wall.vert" />
+    <None Include="shaders\moving_wall.frag" />
     <None Include="shader\vertexshaderC.glsl" />
     <None Include="shader\fragmentshaderC.glsl" />
     <None Include="README_PRIMA_DI_INIZIARE.txt" />

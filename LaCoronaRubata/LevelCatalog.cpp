@@ -6,79 +6,11 @@
 
 namespace {
 
-using namespace LevelConfig;
-
-/// Assembla il Deserto della Volpe usando le quote di Config.h.
-LevelDefinition foxDesert()
-{
-    LevelDefinition level{
-        {ROOM_HALF_WIDTH_L1, ROOM_HALF_HEIGHT_L1},
-        {{{PLAYER_1_SPAWN_X_L1, PLAYER_1_SPAWN_FEET_Y_L1}, {PLAYER_2_SPAWN_X_L1, PLAYER_2_SPAWN_FEET_Y_L1}}},
-        {DOOR_X_L1, DOOR_BASE_Y_L1},
-        {
-            {{PLATFORM_1_BASE_X_L1, PLATFORM_1_BASE_Y_L1}, {PLATFORM_1_WIDTH_L1, PLATFORM_1_THICKNESS_L1}},
-            {{PLATFORM_2_BASE_X_L1, PLATFORM_2_BASE_Y_L1}, {PLATFORM_2_WIDTH_L1, PLATFORM_2_THICKNESS_L1}},
-            {{PLATFORM_3_BASE_X_L1, PLATFORM_3_BASE_Y_L1}, {PLATFORM_3_WIDTH_L1, PLATFORM_3_THICKNESS_L1}},
-            {{PLATFORM_4_BASE_X_L1, PLATFORM_4_BASE_Y_L1}, {PLATFORM_4_WIDTH_L1, PLATFORM_4_THICKNESS_L1}},
-            {{PLATFORM_5_BASE_X_L1, PLATFORM_5_BASE_Y_L1}, {PLATFORM_5_WIDTH_L1, PLATFORM_5_THICKNESS_L1}},
-            {{UPPER_WALL_1_X_L1, PLATFORM_5_TOP_Y_L1}, {UPPER_WALL_1_WIDTH_L1, UPPER_WALL_1_HEIGHT_L1}},
-            {{UPPER_WALL_2_X_L1, PLATFORM_5_TOP_Y_L1}, {UPPER_WALL_2_WIDTH_L1, UPPER_WALL_2_HEIGHT_L1}},
-            {{UPPER_WALL_3_X_L1, PLATFORM_5_TOP_Y_L1}, {UPPER_WALL_3_WIDTH_L1, UPPER_WALL_3_HEIGHT_L1}},
-            {{BONUS_WALL_X_L1, BONUS_WALL_BASE_Y_L1},
-             {BONUS_WALL_WIDTH_L1, BONUS_WALL_TOP_Y_L1 - BONUS_WALL_BASE_Y_L1}}
-        },
-        {
-            {CRYSTAL_1_X_L1, CRYSTAL_1_Y_L1},
-            {CRYSTAL_2_X_L1, CRYSTAL_2_Y_L1},
-            {CRYSTAL_3_X_L1, CRYSTAL_3_Y_L1},
-            {CRYSTAL_4_X_L1, CRYSTAL_4_Y_L1},
-            {CRYSTAL_5_X_L1, CRYSTAL_5_Y_L1},
-            {CRYSTAL_6_X_L1, CRYSTAL_6_Y_L1},
-            {CRYSTAL_7_X_L1, CRYSTAL_7_Y_L1}
-        },
-        {
-            {{PRESSURE_PLATE_A_BASE_X_L1, PRESSURE_PLATE_A_BASE_Y_L1},
-             PRESSURE_PLATE_WIDTH_L1,
-             PRESSURE_PLATE_HEIGHT_L1,
-             PRESSURE_PLATE_PRESS_DISTANCE_L1},
-            {{PRESSURE_PLATE_B_BASE_X_L1, PRESSURE_PLATE_B_BASE_Y_L1},
-             PRESSURE_PLATE_WIDTH_L1,
-             PRESSURE_PLATE_HEIGHT_L1,
-             PRESSURE_PLATE_PRESS_DISTANCE_L1}
-        },
-        FLOOR_Y_L1,
-        {
-            {{MOVING_WALL_CLOSED_CENTER_X_L1, MOVING_WALL_CENTER_Y_L1},
-             {MOVING_WALL_OPEN_CENTER_X_L1, MOVING_WALL_CENTER_Y_L1},
-             {MOVING_WALL_WIDTH_L1, MOVING_WALL_HEIGHT_L1},
-             MOVING_WALL_TRAVEL_SECONDS_L1,
-             MOVING_WALL_PRESSURE_PLATE_INDICES_L1}
-        },
-        {
-            {{GHOST_START_X_L1, GHOST_CENTER_Y_L1}, {GHOST_END_X_L1, GHOST_CENTER_Y_L1},
-             {GHOST_WIDTH_L1, GHOST_HEIGHT_L1}, GHOST_SPEED_L1}
-        },
-        {
-            {{CRATE_BASE_X_L1, CRATE_BASE_Y_L1}, {CRATE_WIDTH_L1, CRATE_HEIGHT_L1}},
-            {{UPPER_CRATE_X_L1, PLATFORM_5_TOP_Y_L1}, {UPPER_CRATE_WIDTH_L1, UPPER_CRATE_HEIGHT_L1}}
-        }
-    };
-    for (std::size_t step = 0; step < BONUS_STEP_COUNT_L1; ++step) {
-        const float x = step % 2 == 0 ? BONUS_STEP_LEFT_X_L1 : BONUS_STEP_RIGHT_X_L1;
-        const float top = BONUS_FIRST_STEP_TOP_Y_L1 + static_cast<float>(step) * BONUS_STEP_RISE_L1;
-        level.platforms.push_back({
-            {x, top - BONUS_STEP_THICKNESS_L1},
-            {BONUS_STEP_WIDTH_L1, BONUS_STEP_THICKNESS_L1}
-        });
-    }
-    return level;
-}
-
 /// Converte i bordi delle piattaforme nelle posizioni di base usate dalla simulazione.
-template<std::size_t PlatformCount, std::size_t CrystalCount>
+template<std::size_t PlatformCount, std::size_t StarCount>
 void loadRoomGeometry(LevelDefinition& level,
-                      const PlatformBounds (&platforms)[PlatformCount],
-                      const CrystalPosition (&crystals)[CrystalCount])
+                      const LevelConfig::PlatformBounds (&platforms)[PlatformCount],
+                      const LevelConfig::StarPosition (&stars)[StarCount])
 {
     level.platforms.reserve(PlatformCount);
     for (const auto& platform : platforms) {
@@ -88,16 +20,58 @@ void loadRoomGeometry(LevelDefinition& level,
         });
     }
 
-    level.crystals.reserve(CrystalCount);
-    for (const auto& crystal : crystals) {
-        level.crystals.push_back({crystal.x, crystal.y});
+    level.stars.reserve(StarCount);
+    for (const auto& star : stars) {
+        level.stars.push_back({star.x, star.y});
     }
 }
 
-/// Assembla la Stazione sospesa: A comanda il portone basso; B apre la via di ritorno.
-LevelDefinition suspendedStation()
+/// Assembla il livello 1 usando le quote di Config.h.
+LevelDefinition level1()
 {
-    using namespace LevelConfig::Station;
+    using namespace LevelConfig::Level1;
+
+    LevelDefinition level{
+        {ROOM_HALF_WIDTH, ROOM_HALF_HEIGHT},
+        {{{PLAYER_1_SPAWN_X, PLAYER_1_SPAWN_FEET_Y}, {PLAYER_2_SPAWN_X, PLAYER_2_SPAWN_FEET_Y}}},
+        {DOOR_X, DOOR_BASE_Y},
+        {}, // Piattaforme caricate da PLATFORMS.
+        {}, // Stelle caricate da STARS.
+        {
+            {{PRESSURE_PLATE_A_BASE_X, PRESSURE_PLATE_A_BASE_Y},
+             PRESSURE_PLATE_WIDTH,
+             PRESSURE_PLATE_HEIGHT,
+             PRESSURE_PLATE_PRESS_DISTANCE},
+            {{PRESSURE_PLATE_B_BASE_X, PRESSURE_PLATE_B_BASE_Y},
+             PRESSURE_PLATE_WIDTH,
+             PRESSURE_PLATE_HEIGHT,
+             PRESSURE_PLATE_PRESS_DISTANCE}
+        },
+        FLOOR_Y,
+        {
+            {{MOVING_WALL_CLOSED_CENTER_X, MOVING_WALL_CENTER_Y},
+             {MOVING_WALL_OPEN_CENTER_X, MOVING_WALL_CENTER_Y},
+             {MOVING_WALL_WIDTH, MOVING_WALL_HEIGHT},
+             MOVING_WALL_TRAVEL_SECONDS,
+             MOVING_WALL_PRESSURE_PLATE_INDICES}
+        },
+        {
+            {{GHOST_START_X, GHOST_CENTER_Y}, {GHOST_END_X, GHOST_CENTER_Y},
+             {GHOST_WIDTH, GHOST_HEIGHT}, GHOST_SPEED}
+        },
+        {
+            {{CRATE_BASE_X, CRATE_BASE_Y}, {CRATE_WIDTH, CRATE_HEIGHT}},
+            {{UPPER_CRATE_X, PLATFORM_5_TOP_Y}, {UPPER_CRATE_WIDTH, UPPER_CRATE_HEIGHT}}
+        }
+    };
+    loadRoomGeometry(level, PLATFORMS, STARS);
+    return level;
+}
+
+/// Nel livello 2, A comanda il portone basso e B apre la via di ritorno.
+LevelDefinition level2()
+{
+    using namespace LevelConfig::Level2;
 
     LevelDefinition level{};
     level.roomHalfSize = {ROOM_HALF_WIDTH, ROOM_HALF_HEIGHT};
@@ -105,7 +79,7 @@ LevelDefinition suspendedStation()
     level.spawnFeet = {{{PLAYER_1_SPAWN_X, SPAWN_TOP_Y}, {PLAYER_2_SPAWN_X, SPAWN_TOP_Y}}};
     level.doorBase = {EXIT_X, EXIT_FLOOR_Y};
 
-    loadRoomGeometry(level, PLATFORMS, CRYSTALS);
+    loadRoomGeometry(level, PLATFORMS, STARS);
 
     level.pressurePlates = {
         {{PLATE_A_X, PLATE_A_FLOOR_Y}, PLATE_WIDTH, PLATE_HEIGHT, PLATE_PRESS_DISTANCE},
@@ -131,17 +105,17 @@ LevelDefinition suspendedStation()
     return level;
 }
 
-/// Assembla il Modulo di atterraggio: i due percorsi si aprono a vicenda.
-LevelDefinition landingModule()
+/// Nel livello 3 i due percorsi si aprono a vicenda.
+LevelDefinition level3()
 {
-    using namespace LevelConfig::LandingModule;
+    using namespace LevelConfig::Level3;
 
     LevelDefinition level{};
     level.roomHalfSize = {ROOM_HALF_WIDTH, ROOM_HALF_HEIGHT};
     level.floorY = FLOOR_Y;
     level.spawnFeet = {{{PLAYER_1_SPAWN_X, UPPER_FLOOR_Y}, {PLAYER_2_SPAWN_X, UPPER_FLOOR_Y}}};
     level.doorBase = {EXIT_X, FLOOR_Y};
-    loadRoomGeometry(level, PLATFORMS, CRYSTALS);
+    loadRoomGeometry(level, PLATFORMS, STARS);
 
     level.pressurePlates = {
         {{PLATE_A_X, UPPER_FLOOR_Y}, PLATE_WIDTH, PLATE_HEIGHT, PLATE_PRESS_DISTANCE},
@@ -173,9 +147,9 @@ LevelDefinition landingModule()
 }
 
 const LevelDefinition levels[] = {
-    foxDesert(),
-    suspendedStation(),
-    landingModule()
+    level1(),
+    level2(),
+    level3()
 };
 
 /// Compone una stanza di prova con gli stessi oggetti della campagna.
@@ -192,7 +166,7 @@ LevelDefinition tutorialRoom()
         {{PRACTICE_PLATFORM_X, FLOOR_Y}, {PRACTICE_PLATFORM_WIDTH, PRACTICE_PLATFORM_HEIGHT}},
         {{LOW_PASSAGE_X, FLOOR_Y + LOW_PASSAGE_CLEARANCE}, {LOW_PASSAGE_WIDTH, LOW_PASSAGE_THICKNESS}}
     };
-    room.crystals = {{PRACTICE_PLATFORM_X, FLOOR_Y + CRYSTAL_HEIGHT}};
+    room.stars = {{PRACTICE_PLATFORM_X, FLOOR_Y + STAR_HEIGHT}};
     room.pressurePlates = {{{PLATE_X, FLOOR_Y}, PLATE_WIDTH, PLATE_HEIGHT, PLATE_PRESS_DISTANCE}};
     const float wallCenterY = FLOOR_Y + WALL_HEIGHT * 0.5f;
     room.movingWalls = {

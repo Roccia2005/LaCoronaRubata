@@ -19,15 +19,21 @@ void Renderer::setRoomViewport(int width, int height, const glm::vec2& roomHalfS
                               -roomHalfSize.y, roomHalfSize.y, -1.0f, 1.0f);
 }
 
-/// Attiva lo shader degli oggetti base e disegna le istanze visibili del passaggio Basic con la
-/// proiezione corrente e la loro Model Matrix.
+/// Disegna oggetti base e muri mobili nello stesso ordine delle istanze.
 void Renderer::drawScene(const Scene& scene) const
 {
-    m_shader.use();
-    m_shader.setMat4("projection", m_projection);
+    const Shader* active = nullptr;
     for (const GeometryInstance& instance : scene.instances()) {
-        if (!instance.visible || instance.pass != RenderPass::Basic) continue;
-        m_shader.setMat4("model", instance.modelMatrix);
+        if (!instance.visible || instance.pass == RenderPass::Stars) continue;
+        const bool wall = instance.pass == RenderPass::MovingWall;
+        const Shader& shader = wall ? m_wallShader : m_basicShader;
+        if (active != &shader) {
+            shader.use();
+            shader.setMat4("projection", m_projection);
+            active = &shader;
+        }
+        shader.setMat4("model", instance.modelMatrix);
+        if (wall) shader.setFloat("uMoving", instance.moving ? 1.0f : 0.0f);
         scene.geometry(instance.geometryIndex).draw();
     }
     glBindVertexArray(0);

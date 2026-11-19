@@ -114,11 +114,14 @@
     <ClCompile Include="BackgroundRenderer.cpp">
       <Filter>Source Files\Rendering</Filter>
     </ClCompile>
-    <ClCompile Include="CoinRenderer.cpp">
+    <ClCompile Include="StarRenderer.cpp">
       <Filter>Source Files\Rendering</Filter>
     </ClCompile>
     <ClCompile Include="Simulazione\Components\Crate.cpp">
       <Filter>Source Files\Simulazione\Components</Filter>
+    </ClCompile>
+    <ClCompile Include="ObjLoader.cpp">
+      <Filter>Source Files\Forme</Filter>
     </ClCompile>
     <ClCompile Include="DecorativeShapes.cpp">
       <Filter>Source Files\Forme</Filter>
@@ -230,11 +233,14 @@
     <ClInclude Include="BackgroundRenderer.h">
       <Filter>Header Files\Rendering</Filter>
     </ClInclude>
-    <ClInclude Include="CoinRenderer.h">
+    <ClInclude Include="StarRenderer.h">
       <Filter>Header Files\Rendering</Filter>
     </ClInclude>
     <ClInclude Include="Simulazione\Components\Crate.h">
       <Filter>Header Files\Simulazione\Components</Filter>
+    </ClInclude>
+    <ClInclude Include="ObjLoader.h">
+      <Filter>Header Files\Forme</Filter>
     </ClInclude>
     <ClInclude Include="DecorativeShapes.h">
       <Filter>Header Files\Forme</Filter>
@@ -297,7 +303,13 @@
     </None>
     <None Include="README_PRIMA_DI_INIZIARE.txt" />
     <None Include="packages.config" />
-    <None Include="shaders\coin.vert">
+    <None Include="shaders\star.vert">
+      <Filter>Shader</Filter>
+    </None>
+    <None Include="shaders\moving_wall.vert">
+      <Filter>Shader</Filter>
+    </None>
+    <None Include="shaders\moving_wall.frag">
       <Filter>Shader</Filter>
     </None>
     <None Include="shaders\background.frag">

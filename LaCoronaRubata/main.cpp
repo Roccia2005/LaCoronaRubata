@@ -6,10 +6,11 @@
 #include "Shader.h"
 #include "Renderer.h"
 #include "BackgroundRenderer.h"
-#include "CoinRenderer.h"
+#include "StarRenderer.h"
 #include "GameFlow.h"
 #include "Gui.h"
 #include <algorithm>
+#include <exception>
 #include <fstream>
 #include <iostream>
 #include <optional>
@@ -54,16 +55,23 @@ PlayerInput readPlayerInput(GLFWwindow* window, const PlayerKeys& keys)
     };
 }
 
+bool isPlayable(Screen screen)
+{
+    return screen == Screen::Story || screen == Screen::Tutorial;
+}
+
 struct ShaderSources {
+    std::string movingWallVertex;
+    std::string movingWallFragment;
     std::string basicVertex;
     std::string basicFragment;
     std::string backgroundVertex;
     std::string backgroundFragment;
-    std::string coinVertex;
+    std::string starVertex;
 };
 
 /// Carica i sorgenti GLSL richiesti all'avvio. Il fragment shader di base viene
-/// condiviso fra gli oggetti ordinari e i cristalli.
+/// condiviso fra gli oggetti ordinari e le stelle.
 std::optional<ShaderSources> loadShaderSources()
 {
     ShaderSources sources;
@@ -79,8 +87,14 @@ std::optional<ShaderSources> loadShaderSources()
         return std::nullopt;
     }
 
-    sources.coinVertex = loadTextFile("shaders/coin.vert");
-    if (sources.coinVertex.empty()) {
+    sources.movingWallVertex = loadTextFile("shaders/moving_wall.vert");
+    sources.movingWallFragment = loadTextFile("shaders/moving_wall.frag");
+    if (sources.movingWallVertex.empty() || sources.movingWallFragment.empty()) {
+        return std::nullopt;
+    }
+
+    sources.starVertex = loadTextFile("shaders/star.vert");
+    if (sources.starVertex.empty()) {
         return std::nullopt;
     }
     return sources;
@@ -89,11 +103,12 @@ std::optional<ShaderSources> loadShaderSources()
 /// Disegna fondale e stanza prima dei pannelli dell'interfaccia.
 void renderWorld(int width, int height, const GameFlow& flow, LevelView& levelView,
                  Renderer& renderer, const BackgroundRenderer& background,
-                 const CoinRenderer& coinRenderer, float timeSeconds)
+                 const StarRenderer& starRenderer, float timeSeconds)
 {
     const Level* level = flow.levelToDraw();
     if (level) {
-        levelView.sync(*level, flow.levelNumber());
+        const Screen screen = flow.screen();
+        levelView.sync(*level, flow.levelNumber(), flow.worldTime(), isPlayable(screen));
         renderer.setRoomViewport(width, height, level->roomHalfSize());
     } else {
         glViewport(0, 0, width, height);
@@ -104,7 +119,7 @@ void renderWorld(int width, int height, const GameFlow& flow, LevelView& levelVi
     background.draw(timeSeconds);
     if (level) {
         renderer.drawScene(levelView.scene());
-        coinRenderer.draw(levelView.scene(), renderer.projectionMatrix(), flow.worldTime());
+        starRenderer.draw(levelView.scene(), renderer.projectionMatrix(), flow.worldTime());
     }
 }
 
@@ -113,7 +128,7 @@ void updateWindowTitle(GLFWwindow* window, const GameFlow& flow)
 {
     std::string title = GameConfig::GAME_TITLE;
     if (flow.screen() == Screen::Story) {
-        title += " | Livello " + std::to_string(flow.levelNumber()) + " | Cristalli: "
+        title += " | Livello " + std::to_string(flow.levelNumber()) + " | Punti: "
               + std::to_string(flow.levelToDraw()->score()) + " | R reset";
     } else if (flow.screen() == Screen::Tutorial) {
         title += " | Tutorial";
@@ -161,18 +176,19 @@ int main()
     }
 
     // Le risorse OpenGL vengono distrutte prima della finestra e del contesto.
-    {
+    try {
         // Shader e renderer per gli oggetti ordinari
         Shader shader(shaderSources->basicVertex, shaderSources->basicFragment);
-        Renderer renderer(shader);
+        Shader wallShader(shaderSources->movingWallVertex, shaderSources->movingWallFragment);
+        Renderer renderer(shader, wallShader);
 
         // Shader e render separato per lo sfondo (fullscreen quad in NDC).
         Shader backgroundShader(shaderSources->backgroundVertex, shaderSources->backgroundFragment);
         BackgroundRenderer background(backgroundShader);
 
-        //Shader e render separato per le monete
-        Shader coinShader(shaderSources->coinVertex, shaderSources->basicFragment);
-        CoinRenderer coinRenderer(coinShader);
+        // Shader e renderer dedicati alle stelle.
+        Shader starShader(shaderSources->starVertex, shaderSources->basicFragment);
+        StarRenderer starRenderer(starShader);
         GameFlow flow;
         LevelView levelView;
         Gui gui;
@@ -196,7 +212,7 @@ int main()
             previousTime = now;
 
             const Screen screen = flow.screen();
-            const bool playing = screen == Screen::Story || screen == Screen::Tutorial;
+            const bool playing = isPlayable(screen);
             const bool escape = glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS;
             const bool restart = glfwGetKey(window, GLFW_KEY_R) == GLFW_PRESS;
 
@@ -226,7 +242,7 @@ int main()
                 continue;
             }
 
-            renderWorld(width, height, flow, levelView, renderer, background, coinRenderer,
+            renderWorld(width, height, flow, levelView, renderer, background, starRenderer,
                         static_cast<float>(now));
             gui.beginFrame();
             if (flow.screen() == Screen::MainMenu) {
@@ -240,7 +256,12 @@ int main()
             glfwSwapBuffers(window);
         }
         gui.shutdown();
-    } // Distruzione automatica degli oggetti locali.
+    } catch (const std::exception& error) {
+        std::cerr << error.what() << '\n';
+        glfwDestroyWindow(window);
+        glfwTerminate();
+        return 1;
+    }
 
     glfwDestroyWindow(window);
     glfwTerminate();

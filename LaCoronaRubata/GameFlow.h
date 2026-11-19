@@ -41,7 +41,7 @@ public:
 
     /// Numero della stanza restituita da levelToDraw(). Il tutorial vale 0.
     std::size_t levelNumber() const;
-    /// Tempo usato dalla simulazione e dall'animazione dei cristalli della stanza.
+    /// Tempo usato dalla simulazione e dall'animazione delle stelle della stanza.
     float worldTime() const { return m_worldTime; }
 
 private:

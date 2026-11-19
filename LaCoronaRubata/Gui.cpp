@@ -164,7 +164,7 @@ void Gui::drawTutorial()
         ImGui::TextColored(gold, "%s", "Tutorial");
         ImGui::TextWrapped("Piccolo Principe   A / D movimento, W salto, S abbassati");
         ImGui::TextWrapped(u8"Volpe   Frecce laterali, Su salto, Gi\u00f9 abbassati");
-        ImGui::TextWrapped("Spingi la cassa sulla pedana, abbassati nel passaggio basso e salta sopra il fantasma.");
+        ImGui::TextWrapped("Spingi la cassa sulla pedana, abbassati nel passaggio basso e salta sopra il serpente.");
         ImGui::TextWrapped("R  Ricomincia     Esc  Menu principale");
     }
     ImGui::End();
