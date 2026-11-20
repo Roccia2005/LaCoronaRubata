@@ -6,6 +6,14 @@ struct GLFWwindow;
 enum class UiAction;
 struct DialogueLine;
 
+// Coordinate logiche relative all'origine del viewport ImGui, con Y verso il basso.
+struct DialoguePanelResult {
+    UiAction action;
+    glm::vec2 topLeft;
+    glm::vec2 bottomRight;
+    glm::vec2 viewportSize;
+};
+
 // ============================================================================
 // Gui
 // Incapsula Dear ImGui e i parametri modificabili dall'utente.
@@ -19,7 +27,7 @@ public:
     /// Disegna il menu e restituisce l'azione selezionata.
     UiAction drawMenu();
     /// Mostra una battuta e rileva una nuova pressione di Invio o di Continua.
-    UiAction drawDialogue(const DialogueLine& line);
+    DialoguePanelResult drawDialogue(const DialogueLine& line);
     /// Mostra i comandi mentre i due giocatori esplorano la stanza di prova.
     void drawTutorial();
     void render();

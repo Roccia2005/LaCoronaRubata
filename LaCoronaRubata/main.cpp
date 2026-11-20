@@ -3,6 +3,7 @@
 #include <GLFW/glfw3.h>
 #include "Config.h"
 #include "LevelView.h"
+#include "DialogueView.h"
 #include "Shader.h"
 #include "Renderer.h"
 #include "BackgroundRenderer.h"
@@ -100,6 +101,13 @@ std::optional<ShaderSources> loadShaderSources()
     return sources;
 }
 
+void drawBackground(const BackgroundRenderer& background, float timeSeconds)
+{
+    glClearColor(0.06f, 0.11f, 0.20f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT);
+    background.draw(timeSeconds);
+}
+
 /// Disegna fondale e stanza prima dei pannelli dell'interfaccia.
 void renderWorld(int width, int height, const GameFlow& flow, LevelView& levelView,
                  Renderer& renderer, const BackgroundRenderer& background,
@@ -114,9 +122,7 @@ void renderWorld(int width, int height, const GameFlow& flow, LevelView& levelVi
         glViewport(0, 0, width, height);
     }
 
-    glClearColor(0.06f, 0.11f, 0.20f, 1.0f);
-    glClear(GL_COLOR_BUFFER_BIT);
-    background.draw(timeSeconds);
+    drawBackground(background, timeSeconds);
     if (level) {
         renderer.drawScene(levelView.scene());
         starRenderer.draw(levelView.scene(), renderer.projectionMatrix(), flow.worldTime());
@@ -191,6 +197,7 @@ int main()
         StarRenderer starRenderer(starShader);
         GameFlow flow;
         LevelView levelView;
+        DialogueView dialogueView;
         Gui gui;
         gui.initialize(window);
 
@@ -234,6 +241,8 @@ int main()
             const PlayerInput input1 = playing ? readPlayerInput(window, firstPlayerKeys) : PlayerInput{};
             const PlayerInput input2 = playing ? readPlayerInput(window, secondPlayerKeys) : PlayerInput{};
             flow.update(dt, static_cast<float>(now), input1, input2, action);
+            const DialogueLine* line = flow.dialogueLine();
+            dialogueView.observeLine(line);
             updateWindowTitle(window, flow);
 
             int width = 0, height = 0;
@@ -242,15 +251,24 @@ int main()
                 continue;
             }
 
-            renderWorld(width, height, flow, levelView, renderer, background, starRenderer,
-                        static_cast<float>(now));
             gui.beginFrame();
-            if (flow.screen() == Screen::MainMenu) {
-                pendingAction = gui.drawMenu();
-            } else if (const DialogueLine* line = flow.dialogueLine()) {
-                pendingAction = gui.drawDialogue(*line);
-            } else if (flow.screen() == Screen::Tutorial) {
-                gui.drawTutorial();
+            if (line) {
+                const auto panel = gui.drawDialogue(*line);
+                pendingAction = panel.action;
+                const glm::vec2 framebufferSize(width, height);
+                renderer.setRoomViewport(width, height, framebufferSize * 0.5f);
+                drawBackground(background, static_cast<float>(now));
+                if (dialogueView.updatePose(panel, framebufferSize, now)) {
+                    renderer.drawScene(dialogueView.scene());
+                }
+            } else {
+                renderWorld(width, height, flow, levelView, renderer, background, starRenderer,
+                            static_cast<float>(now));
+                if (flow.screen() == Screen::MainMenu) {
+                    pendingAction = gui.drawMenu();
+                } else if (flow.screen() == Screen::Tutorial) {
+                    gui.drawTutorial();
+                }
             }
             gui.render();
             glfwSwapBuffers(window);

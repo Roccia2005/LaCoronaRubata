@@ -144,6 +144,9 @@
     <ClCompile Include="LevelCatalog.cpp">
       <Filter>Source Files\Simulazione</Filter>
     </ClCompile>
+    <ClCompile Include="DialogueView.cpp">
+      <Filter>Source Files\Rendering</Filter>
+    </ClCompile>
     <ClCompile Include="LevelView.cpp">
       <Filter>Source Files\Rendering</Filter>
     </ClCompile>
@@ -259,6 +262,9 @@
     </ClInclude>
     <ClInclude Include="Level.h">
       <Filter>Header Files\Simulazione</Filter>
+    </ClInclude>
+    <ClInclude Include="DialogueView.h">
+      <Filter>Header Files\Rendering</Filter>
     </ClInclude>
     <ClInclude Include="LevelView.h">
       <Filter>Header Files\Rendering</Filter>

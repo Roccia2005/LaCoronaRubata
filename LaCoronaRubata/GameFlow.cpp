@@ -5,20 +5,25 @@
 namespace {
 
 constexpr DialogueLine intro[] = {
-    {"Piccolo Principe", "Devo tornare sul mio pianeta. La Rosa mi aspetta."},
-    {"Volpe", u8"Il ponte \u00e8 rotto. Possiamo prendere una navetta alla stazione."},
-    {"Piccolo Principe", "Mi accompagni?"},
-    {"Volpe", u8"Volentieri. \u00c8 da un po\u2019 che voglio conoscerla."}
+    {DialogueSpeaker::Prince, "Devo tornare sul mio pianeta. La Rosa mi aspetta."},
+    {DialogueSpeaker::Fox, u8"Il ponte \u00e8 rotto. Possiamo prendere una navetta alla stazione."},
+    {DialogueSpeaker::Prince, "Mi accompagni?"},
+    {DialogueSpeaker::Fox, u8"Volentieri. \u00c8 da un po\u2019 che voglio conoscerla."}
 };
 
 constexpr DialogueLine finale[] = {
-    {"Volpe", u8"\u00c8 lei la Rosa di cui mi parlavi?"},
-    {"Piccolo Principe", u8"S\u00ec. Le ho parlato anche di te."},
-    {"Volpe", u8"Ah s\u00ec? E che cosa le hai detto?"},
-    {"Piccolo Principe", "Che un giorno saremmo venuti a trovarla insieme."}
+    {DialogueSpeaker::Fox, u8"\u00c8 lei la Rosa di cui mi parlavi?"},
+    {DialogueSpeaker::Prince, u8"S\u00ec. Le ho parlato anche di te."},
+    {DialogueSpeaker::Fox, u8"Ah s\u00ec? E che cosa le hai detto?"},
+    {DialogueSpeaker::Prince, "Che un giorno saremmo venuti a trovarla insieme."}
 };
 
 } // namespace
+
+const char* speakerName(DialogueSpeaker speaker)
+{
+    return speaker == DialogueSpeaker::Prince ? "Piccolo Principe" : "Volpe";
+}
 
 void GameFlow::update(float dt, float timeSeconds, const PlayerInput& first,
                       const PlayerInput& second, UiAction action)

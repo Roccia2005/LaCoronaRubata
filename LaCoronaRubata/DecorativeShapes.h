@@ -4,6 +4,14 @@
 #include <array>
 namespace DecorativeShapes {
 // Tutti i vertici sono in coordinate locali.
+struct CharacterMeshes {
+    MeshData body;
+    MeshData head;
+    MeshData foreground;
+    glm::vec2 neckPivot{0.0f};
+};
+CharacterMeshes littlePrinceParts();
+CharacterMeshes foxParts();
 MeshData littlePrince();
 MeshData fox();
 MeshData crystal(float radius);

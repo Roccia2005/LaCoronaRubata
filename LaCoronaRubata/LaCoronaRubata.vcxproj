@@ -88,6 +88,7 @@
     <ClCompile Include="Simulazione\Components\Ghost.cpp" />
     <ClCompile Include="Level.cpp" />
     <ClCompile Include="LevelCatalog.cpp" />
+    <ClCompile Include="DialogueView.cpp" />
     <ClCompile Include="LevelView.cpp" />
     <ClCompile Include="Simulazione\Components\MovingWall.cpp" />
     <ClCompile Include="Simulazione\Components\Player.cpp" />
@@ -123,6 +124,7 @@
     <ClInclude Include="GameFlow.h" />
     <ClInclude Include="Simulazione\Components\Ghost.h" />
     <ClInclude Include="Level.h" />
+    <ClInclude Include="DialogueView.h" />
     <ClInclude Include="LevelView.h" />
     <ClInclude Include="LevelDefinition.h" />
     <ClInclude Include="LevelCatalog.h" />

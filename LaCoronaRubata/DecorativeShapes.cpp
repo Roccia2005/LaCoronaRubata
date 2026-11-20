@@ -1,5 +1,6 @@
 #include "DecorativeShapes.h"
 #include <cmath>
+#include <utility>
 
 // Figure 2D composte soltanto da triangoli.
 // Ogni vertice occupa cinque float: x, y, r, g, b.
@@ -38,9 +39,9 @@ namespace DecorativeShapes {
 
 /// Compone il Piccolo Principe con il cappotto azzurro, il mantello e la sciarpa.
 /// La base degli stivali a y = -0.5 coincide con la quota dei piedi.
-MeshData littlePrince()
+CharacterMeshes littlePrinceParts()
 {
-    MeshData mesh;
+    CharacterMeshes parts;
     const glm::vec3 navy{0.08f, 0.15f, 0.28f};
     const glm::vec3 cape{0.14f, 0.36f, 0.66f};
     const glm::vec3 coat{0.31f, 0.66f, 0.93f};
@@ -50,41 +51,42 @@ MeshData littlePrince()
     const glm::vec3 hair{0.96f, 0.73f, 0.34f};
     const glm::vec3 gold{1.00f, 0.88f, 0.53f};
 
-    addQuad(mesh, {-0.44f, -0.43f}, {0.39f, -0.40f},
+    addQuad(parts.body, {-0.44f, -0.43f}, {0.39f, -0.40f},
             {0.23f, 0.15f}, {-0.19f, 0.15f}, cape);
-    addRectangle(mesh, -0.20f, -0.50f, -0.05f, -0.25f, navy);
-    addRectangle(mesh, 0.05f, -0.50f, 0.20f, -0.25f, navy);
-    addQuad(mesh, {-0.28f, -0.35f}, {0.28f, -0.35f},
+    addRectangle(parts.body, -0.20f, -0.50f, -0.05f, -0.25f, navy);
+    addRectangle(parts.body, 0.05f, -0.50f, 0.20f, -0.25f, navy);
+    addQuad(parts.body, {-0.28f, -0.35f}, {0.28f, -0.35f},
             {0.19f, 0.13f}, {-0.19f, 0.13f}, coat);
-    addQuad(mesh, {-0.35f, -0.16f}, {-0.23f, -0.19f},
+    addQuad(parts.body, {-0.35f, -0.16f}, {-0.23f, -0.19f},
             {-0.13f, 0.10f}, {-0.24f, 0.11f}, coat);
-    addQuad(mesh, {0.23f, -0.19f}, {0.35f, -0.16f},
+    addQuad(parts.body, {0.23f, -0.19f}, {0.35f, -0.16f},
             {0.24f, 0.11f}, {0.13f, 0.10f}, coat);
-    addRectangle(mesh, -0.35f, -0.20f, -0.25f, -0.16f, skin);
-    addRectangle(mesh, 0.25f, -0.20f, 0.35f, -0.16f, skin);
-    addRectangle(mesh, -0.24f, -0.24f, 0.24f, -0.19f, cape);
-    addRectangle(mesh, -0.04f, -0.245f, 0.04f, -0.18f, gold);
+    addRectangle(parts.body, -0.35f, -0.20f, -0.25f, -0.16f, skin);
+    addRectangle(parts.body, 0.25f, -0.20f, 0.35f, -0.16f, skin);
+    addRectangle(parts.body, -0.24f, -0.24f, 0.24f, -0.19f, cape);
+    addRectangle(parts.body, -0.04f, -0.245f, 0.04f, -0.18f, gold);
 
-    addQuad(mesh, {-0.14f, 0.14f}, {0.14f, 0.14f},
+    addQuad(parts.head, {-0.14f, 0.14f}, {0.14f, 0.14f},
             {0.20f, 0.40f}, {-0.20f, 0.40f}, skin);
-    addQuad(mesh, {-0.23f, 0.29f}, {0.21f, 0.40f},
+    addQuad(parts.head, {-0.23f, 0.29f}, {0.21f, 0.40f},
             {0.08f, 0.49f}, {-0.14f, 0.47f}, hair);
-    addTriangle(mesh, {-0.18f, 0.41f}, {-0.02f, 0.50f}, {-0.02f, 0.42f}, gold);
-    addTriangle(mesh, {0.04f, 0.43f}, {0.20f, 0.50f}, {0.15f, 0.41f}, hair);
-    addRectangle(mesh, -0.12f, 0.25f, -0.08f, 0.30f, navy);
-    addRectangle(mesh, 0.08f, 0.25f, 0.12f, 0.30f, navy);
+    addTriangle(parts.head, {-0.18f, 0.41f}, {-0.02f, 0.50f}, {-0.02f, 0.42f}, gold);
+    addTriangle(parts.head, {0.04f, 0.43f}, {0.20f, 0.50f}, {0.15f, 0.41f}, hair);
+    addRectangle(parts.head, -0.12f, 0.25f, -0.08f, 0.30f, navy);
+    addRectangle(parts.head, 0.08f, 0.25f, 0.12f, 0.30f, navy);
 
-    addQuad(mesh, {0.11f, 0.04f}, {0.44f, 0.00f},
+    addQuad(parts.foreground, {0.11f, 0.04f}, {0.44f, 0.00f},
             {0.50f, 0.11f}, {0.16f, 0.15f}, scarf);
-    addRectangle(mesh, -0.19f, 0.06f, 0.18f, 0.15f, trim);
-    return mesh;
+    addRectangle(parts.foreground, -0.19f, 0.06f, 0.18f, 0.15f, trim);
+    return parts;
 }
 
 /// Compone la Volpe con orecchie a punta, muso chiaro e coda folta.
 /// La base delle zampe ha la stessa quota locale degli stivali del Principe.
-MeshData fox()
+CharacterMeshes foxParts()
 {
-    MeshData mesh;
+    CharacterMeshes parts;
+    parts.neckPivot = {-0.05f, 0.06f};
     const glm::vec3 dark{0.23f, 0.09f, 0.12f};
     const glm::vec3 rust{0.77f, 0.25f, 0.13f};
     const glm::vec3 orange{0.96f, 0.45f, 0.19f};
@@ -92,35 +94,52 @@ MeshData fox()
     const glm::vec3 cream{1.00f, 0.88f, 0.71f};
 
     // La coda parte dietro il corpo e risale sul fianco.
-    addQuad(mesh, {0.12f, -0.38f}, {0.38f, -0.30f},
+    addQuad(parts.body, {0.12f, -0.38f}, {0.38f, -0.30f},
             {0.50f, -0.07f}, {0.28f, -0.13f}, rust);
-    addQuad(mesh, {0.28f, -0.13f}, {0.50f, -0.07f},
+    addQuad(parts.body, {0.28f, -0.13f}, {0.50f, -0.07f},
             {0.46f, 0.15f}, {0.34f, 0.08f}, orange);
-    addTriangle(mesh, {0.36f, 0.00f}, {0.48f, 0.02f}, {0.46f, 0.15f}, cream);
+    addTriangle(parts.body, {0.36f, 0.00f}, {0.48f, 0.02f}, {0.46f, 0.15f}, cream);
 
-    addQuad(mesh, {-0.33f, -0.36f}, {0.21f, -0.36f},
+    addQuad(parts.body, {-0.33f, -0.36f}, {0.21f, -0.36f},
             {0.18f, 0.09f}, {-0.25f, 0.09f}, rust);
-    addQuad(mesh, {-0.24f, -0.27f}, {0.07f, -0.30f},
+    addQuad(parts.body, {-0.24f, -0.27f}, {0.07f, -0.30f},
             {0.12f, 0.06f}, {-0.20f, 0.06f}, orange);
-    addTriangle(mesh, {-0.22f, 0.06f}, {-0.06f, -0.26f}, {0.10f, 0.06f}, cream);
-    addRectangle(mesh, -0.29f, -0.50f, -0.14f, -0.34f, dark);
-    addRectangle(mesh, 0.02f, -0.50f, 0.17f, -0.34f, dark);
+    addTriangle(parts.body, {-0.22f, 0.06f}, {-0.06f, -0.26f}, {0.10f, 0.06f}, cream);
+    addRectangle(parts.body, -0.29f, -0.50f, -0.14f, -0.34f, dark);
+    addRectangle(parts.body, 0.02f, -0.50f, 0.17f, -0.34f, dark);
 
-    addTriangle(mesh, {-0.37f, 0.19f}, {-0.34f, 0.50f}, {-0.12f, 0.30f}, rust);
-    addTriangle(mesh, {0.03f, 0.30f}, {0.24f, 0.50f}, {0.27f, 0.19f}, rust);
-    addTriangle(mesh, {-0.32f, 0.24f}, {-0.31f, 0.42f}, {-0.21f, 0.29f}, cream);
-    addTriangle(mesh, {0.12f, 0.29f}, {0.22f, 0.42f}, {0.23f, 0.24f}, cream);
-    addQuad(mesh, {-0.45f, 0.13f}, {0.35f, 0.13f},
+    addTriangle(parts.head, {-0.37f, 0.19f}, {-0.34f, 0.50f}, {-0.12f, 0.30f}, rust);
+    addTriangle(parts.head, {0.03f, 0.30f}, {0.24f, 0.50f}, {0.27f, 0.19f}, rust);
+    addTriangle(parts.head, {-0.32f, 0.24f}, {-0.31f, 0.42f}, {-0.21f, 0.29f}, cream);
+    addTriangle(parts.head, {0.12f, 0.29f}, {0.22f, 0.42f}, {0.23f, 0.24f}, cream);
+    addQuad(parts.head, {-0.45f, 0.13f}, {0.35f, 0.13f},
             {0.17f, 0.32f}, {-0.27f, 0.32f}, orange);
-    addTriangle(mesh, {-0.34f, 0.24f}, {-0.05f, 0.34f}, {0.23f, 0.24f}, honey);
-    addQuad(mesh, {-0.45f, 0.13f}, {-0.18f, -0.05f},
+    addTriangle(parts.head, {-0.34f, 0.24f}, {-0.05f, 0.34f}, {0.23f, 0.24f}, honey);
+    addQuad(parts.head, {-0.45f, 0.13f}, {-0.18f, -0.05f},
             {0.08f, -0.05f}, {0.35f, 0.13f}, cream);
-    addTriangle(mesh, {-0.20f, 0.15f}, {-0.05f, 0.01f}, {0.10f, 0.15f}, orange);
-    addRectangle(mesh, -0.24f, 0.15f, -0.18f, 0.21f, dark);
-    addRectangle(mesh, 0.08f, 0.15f, 0.14f, 0.21f, dark);
-    addTriangle(mesh, {-0.11f, 0.03f}, {0.01f, 0.03f}, {-0.05f, -0.03f}, dark);
-    return mesh;
+    addTriangle(parts.head, {-0.20f, 0.15f}, {-0.05f, 0.01f}, {0.10f, 0.15f}, orange);
+    addRectangle(parts.head, -0.24f, 0.15f, -0.18f, 0.21f, dark);
+    addRectangle(parts.head, 0.08f, 0.15f, 0.14f, 0.21f, dark);
+    addTriangle(parts.head, {-0.11f, 0.03f}, {0.01f, 0.03f}, {-0.05f, -0.03f}, dark);
+    return parts;
 }
+
+namespace {
+
+MeshData combine(CharacterMeshes parts)
+{
+    auto& vertices = parts.body.vertices;
+    vertices.reserve(vertices.size() + parts.head.vertices.size() + parts.foreground.vertices.size());
+    for (const auto* layer : {&parts.head, &parts.foreground}) {
+        vertices.insert(vertices.end(), layer->vertices.begin(), layer->vertices.end());
+    }
+    return std::move(parts.body);
+}
+
+} // namespace
+
+MeshData littlePrince() { return combine(littlePrinceParts()); }
+MeshData fox() { return combine(foxParts()); }
 
 /// Restituisce un rombo bicolore centrato nell'origine. radius e' la distanza dal centro a
 /// ciascuna punta, in unita' mondo.

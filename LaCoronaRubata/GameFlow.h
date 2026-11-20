@@ -21,8 +21,11 @@ enum class UiAction {
     RestartRoom
 };
 
+enum class DialogueSpeaker { Prince, Fox };
+const char* speakerName(DialogueSpeaker speaker);
+
 struct DialogueLine {
-    std::string_view speaker;
+    DialogueSpeaker speaker;
     std::string_view text;
 };
 
